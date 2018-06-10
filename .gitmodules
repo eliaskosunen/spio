@@ -1,0 +1,9 @@
+[submodule "include/spio/third_party/afio"]
+	path = include/spio/third_party/afio
+	url = https://github.com/ned14/afio
+[submodule "include/spio/third_party/gsl-lite"]
+	path = include/spio/third_party/gsl-lite
+	url = https://github.com/martinmoene/gsl-lite
+[submodule "include/spio/third_party/fmt"]
+	path = include/spio/third_party/fmt
+	url = https://github.com/fmtlib/fmt
