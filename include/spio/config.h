@@ -314,11 +314,11 @@
 // msvc 18.0 (2013)
 // intel 12.0
 //
-// inline namespaces:
+// variadic templates:
 // gcc 4.4
 // clang 2.9
-// msvc 19.0 (2015)
-// intel 14.0
+// msvc 18.0 (2013)
+// intel 12.1
 
 #ifndef SPIO_USE_AFIO
 #define SPIO_USE_AFIO \

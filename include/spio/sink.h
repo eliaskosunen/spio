@@ -24,28 +24,37 @@
 #include "config.h"
 
 #include "device.h"
+#include "error.h"
+#include "result.h"
+
+#ifndef SPIO_WRITE_ALL_MAX_ATTEMPTS
+#define SPIO_WRITE_ALL_MAX_ATTEMPTS 8
+#endif
 
 SPIO_BEGIN_NAMESPACE
 
-template <typename Device, typename = void>
-class writable_wrapper;
+template <typename Device>
+result write_all(Device& d, gsl::span<const gsl::byte> s)
+{
+    auto total_written = 0;
+    for (auto i = 0; i < SPIO_WRITE_ALL_MAX_ATTEMPTS; ++i) {
+        auto ret = d.write(s);
+        total_written += ret.value();
+        if (SPIO_UNLIKELY(ret.has_error())) {
+            return make_result(total_written, ret.error());
+        }
+        if (SPIO_UNLIKELY(ret.value() != s.size())) {
+            s = s.subspan(ret.value());
+        }
+        break;
+    }
+    return total_written;
+}
 
 template <typename Device>
-class writable_wrapper<
-    Device,
-    typename std::enable_if<is_writable<Device>::value>::type> : public Device {
-public:
-    using Device::Device;
-};
-
-template <typename Device>
-class writable_wrapper<
-    Device,
-    typename std::enable_if<is_vector_writable<Device>::value>::type>
-    : public Device {
-public:
-    using Device::Device;
-};
+result vwrite_all(Device& d, gsl::span<const gsl::byte> s)
+{
+}
 
 SPIO_END_NAMESPACE
 

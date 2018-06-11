@@ -4,14 +4,22 @@ int main()
 {
     {
         spio::stdio_handle_device out(stdout);
-        out.write(spio::gsl::byte_span("Say something\n"));
+        //out.write(spio::gsl::byte_span("Say something\n"));
+        spio::write_all(out, spio::gsl::byte_span("Say something\n"));
 
         spio::stdio_handle_device in(stdin);
         std::string buf;
         char ch{};
-        while (true) {
-            in.read(
-                spio::gsl::as_writeable_bytes(spio::gsl::make_span(&ch, 1)));
+        bool eof = false;
+        while (!eof) {
+            auto ret = in.read(
+                spio::gsl::as_writeable_bytes(spio::gsl::make_span(&ch, 1)),
+                eof);
+            if (ret.has_error()) {
+                out.write(spio::gsl::byte_span("Error: "));
+                out.write(spio::gsl::as_bytes(spio::gsl::make_span(
+                    ret.error().what(), std::strlen(ret.error().what()))));
+            }
             if (ch != '\n') {
                 buf.push_back(ch);
             }

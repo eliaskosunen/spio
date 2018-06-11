@@ -26,6 +26,7 @@
 #include <cstdio>
 #include "device.h"
 #include "error.h"
+#include "result.h"
 #include "third_party/expected.h"
 #include "third_party/gsl.h"
 #include "util.h"
@@ -57,21 +58,21 @@ public:
         return m_handle;
     }
 
-    nonstd::expected<streamsize, failure> read(gsl::span<gsl::byte> s)
+    result read(gsl::span<gsl::byte> s, bool& eof)
     {
         Expects(is_open());
 
         if (std::feof(m_handle) != 0) {
-            return nonstd::make_unexpected(make_error_code(end_of_file));
+            return {0, end_of_file};
         }
 
         auto b = std::fread(s.data(), 1, s.size_bytes(), m_handle);
         if (b < s.size_bytes()) {
             if (std::ferror(m_handle) != 0) {
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_result(b, SPIO_MAKE_ERRNO);
             }
             if (std::feof(m_handle) != 0) {
-                return -1;
+                eof = true;
             }
         }
         return b;
@@ -84,19 +85,18 @@ public:
         return std::ungetc(gsl::to_uchar(b), m_handle) != EOF;
     }
 
-    nonstd::expected<streamsize, failure> write(gsl::span<const gsl::byte> s)
+    result write(gsl::span<const gsl::byte> s)
     {
         Expects(is_open());
 
         auto b = std::fwrite(s.data(), 1, s.size_bytes(), m_handle);
         if (b < s.size_bytes()) {
             if (std::ferror(m_handle) != 0) {
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_result(b, SPIO_MAKE_ERRNO);
             }
         }
         return b;
     }
-
 
     nonstd::expected<void, failure> sync()
     {

@@ -18,34 +18,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef SPIO_SPIO_H
-#define SPIO_SPIO_H
+#ifndef SPIO_THIRD_PARTY_OPTIONAL_H
+#define SPIO_THIRD_PARTY_OPTIONAL_H
 
-#include "config.h"
+#include "../config.h"
 
-#if SPIO_GCC_COMPAT
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#pragma GCC diagnostic ignored "-Wsign-compare"
+#if SPIO_CLANG
+#pragma clang diagnostic push
 #endif
 
-#include "string_view.h"
-#include "util.h"
+#include "nonstd/optional.hpp"
 
-#include "container_device.h"
-#include "memory_device.h"
-#include "stdio_device.h"
+SPIO_BEGIN_NAMESPACE
 
-#if SPIO_USE_AFIO
-#include "afio_device.h"
+namespace nonstd = ::nonstd;
+
+SPIO_END_NAMESPACE
+
+#if SPIO_CLANG
+#pragma clang diagnostic pop
 #endif
 
-#include "sink.h"
-
-#include "stream_base.h"
-
-#if SPIO_GCC_COMPAT
-#pragma GCC diagnostic pop
-#endif
-
-#endif  // SPIO_SPIO_H
+#endif  // SPIO_THIRD_PARTY_OPTIONAL_H

@@ -523,10 +523,11 @@ make_unexpected_from_current_exception() -> unexpected_type< std::exception_ptr 
 
 /// in-place tag: construct a value in-place (should come from std::experimental::optional)
 
-#define nsel_IN_PLACE_DEFINED
+#ifndef optional_IN_PLACE_DEFINED
 struct in_place_t{};
 
 nsel_inline17 constexpr in_place_t in_place{};
+#endif
 
 /// unexpect tag, in_place_unexpected tag: construct an error
 

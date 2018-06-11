@@ -113,7 +113,8 @@ using is_sink = disjunction<is_writable<Device>,
 
 template <typename Device>
 using readable_op =
-    decltype(std::declval<Device>().read(std::declval<gsl::span<gsl::byte>>()));
+    decltype(std::declval<Device>().read(std::declval<gsl::span<gsl::byte>>(),
+                                         std::declval<bool&>()));
 template <typename Device>
 using is_readable = is_detected<readable_op, Device>;
 

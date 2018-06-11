@@ -25,6 +25,7 @@
 
 #include "device.h"
 #include "error.h"
+#include "result.h"
 #include "third_party/expected.h"
 #include "third_party/gsl.h"
 #include "util.h"
@@ -62,22 +63,25 @@ public:
         return m_buf;
     }
 
-    nonstd::expected<streamsize, failure> read(gsl::span<gsl::byte> s)
+    result read(gsl::span<gsl::byte> s, bool& eof)
     {
         Expects(m_buf);
 
         if (m_it == m_buf->end()) {
-            return -1;
+            return {0, end_of_file};
         }
         auto dist = std::distance(m_it, m_buf->end());
         auto n = std::min(dist, s.size());
         std::copy_n(m_it, s.begin());
         m_it += n;
+        if (m_it == m_buf->end()) {
+            eof = true;
+        }
         return n;
     }
     template <bool C = IsConst>
     auto write(gsl::span<const gsl::byte> s) ->
-        typename std::enable_if<!C, nonstd::expected<streamsize, failure>>::type
+        typename std::enable_if<!C, result>::type
     {
         Expects(m_buf);
 
