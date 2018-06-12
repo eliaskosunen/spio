@@ -8,4 +8,4 @@ message(STATUS "Use afio: ${SPIO_USE_AFIO}")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory(include/spio)
-add_subdirectory(test)
+add_subdirectory(tests)

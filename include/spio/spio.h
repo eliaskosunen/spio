@@ -41,6 +41,7 @@
 #endif
 
 #include "sink.h"
+#include "source.h"
 
 #include "stream_base.h"
 

@@ -196,11 +196,11 @@
 #elif SPIO_HAS_CONSTEXPR
 #define SPIO_CONSTEXPR inline
 #define SPIO_CONSTEXPR_STRICT constexpr
-#define SPIO_CONSTEXPR_DECL const
+#define SPIO_CONSTEXPR_DECL
 #else
 #define SPIO_CONSTEXPR inline
 #define SPIO_CONSTEXPR_STRICT inline
-#define SPIO_CONSTEXPR_DECL const
+#define SPIO_CONSTEXPR_DECL
 #endif
 
 // Detect noexcept
@@ -222,6 +222,18 @@
 #define SPIO_NODISCARD [[nodiscard]]
 #else
 #define SPIO_NODISCARD /*nodiscard*/
+#endif
+
+// Detect [[noreturn]]
+#if (SPIO_HAS_CPP_ATTRIBUTE(noreturn) && __cplusplus >= SPIO_STD_17) || \
+    (SPIO_MSVC >= SPIO_COMPILER(19, 11, 0) &&                           \
+     SPIO_MSVC_LANG >= SPIO_STD_17) ||                                  \
+    ((SPIO_GCC >= SPIO_COMPILER(7, 0, 0) ||                             \
+      SPIO_INTEL >= SPIO_COMPILER(18, 0, 0)) &&                         \
+     __cplusplus >= SPIO_STD_17)
+#define SPIO_NORETURN [[noreturn]]
+#else
+#define SPIO_NORETURN /*noreturn*/
 #endif
 
 // Detect make_unique

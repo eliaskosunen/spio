@@ -67,7 +67,7 @@ public:
     {
         Expects(m_buf);
 
-        if (m_it == m_buf->end()) {
+        if (m_it == m_buf->end() && s.size() != 0) {
             return {0, end_of_file};
         }
         auto dist = std::distance(m_it, m_buf->end());

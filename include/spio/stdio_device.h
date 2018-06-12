@@ -62,13 +62,13 @@ public:
     {
         Expects(is_open());
 
-        if (std::feof(m_handle) != 0) {
+        if (std::feof(m_handle) != 0 && s.size() != 0) {
             return {0, end_of_file};
         }
 
         auto b = std::fread(s.data(), 1, s.size_bytes(), m_handle);
-        if (b < s.size_bytes()) {
-            if (std::ferror(m_handle) != 0) {
+        if (SPIO_UNLIKELY(b < s.size_bytes())) {
+            if (SPIO_UNLIKELY(std::ferror(m_handle) != 0)) {
                 return make_result(b, SPIO_MAKE_ERRNO);
             }
             if (std::feof(m_handle) != 0) {
@@ -90,8 +90,8 @@ public:
         Expects(is_open());
 
         auto b = std::fwrite(s.data(), 1, s.size_bytes(), m_handle);
-        if (b < s.size_bytes()) {
-            if (std::ferror(m_handle) != 0) {
+        if (SPIO_UNLIKELY(b < s.size_bytes())) {
+            if (SPIO_UNLIKELY(std::ferror(m_handle) != 0)) {
                 return make_result(b, SPIO_MAKE_ERRNO);
             }
         }

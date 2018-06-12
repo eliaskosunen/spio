@@ -1,8 +1,8 @@
 enable_testing()
 
-add_executable(test test.cpp)
-target_link_libraries(test spio)
-target_compile_options(test PRIVATE
+add_executable(tests test.cpp)
+target_link_libraries(tests spio)
+target_compile_options(tests PRIVATE
     $<$<CXX_COMPILER_ID:GNU>:
         -Wall -Wextra -Wpedantic
         -Wno-sign-conversion>

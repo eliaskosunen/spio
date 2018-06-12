@@ -26,6 +26,7 @@
 #include "device.h"
 #include "error.h"
 #include "result.h"
+#include "third_party/expected.h"
 
 #ifndef SPIO_WRITE_ALL_MAX_ATTEMPTS
 #define SPIO_WRITE_ALL_MAX_ATTEMPTS 8
@@ -40,7 +41,8 @@ result write_all(Device& d, gsl::span<const gsl::byte> s)
     for (auto i = 0; i < SPIO_WRITE_ALL_MAX_ATTEMPTS; ++i) {
         auto ret = d.write(s);
         total_written += ret.value();
-        if (SPIO_UNLIKELY(ret.has_error())) {
+        if (SPIO_UNLIKELY(ret.has_error() &&
+                          ret.error().code() != std::errc::interrupted)) {
             return make_result(total_written, ret.error());
         }
         if (SPIO_UNLIKELY(ret.value() != s.size())) {
@@ -52,8 +54,13 @@ result write_all(Device& d, gsl::span<const gsl::byte> s)
 }
 
 template <typename Device>
-result vwrite_all(Device& d, gsl::span<const gsl::byte> s)
+nonstd::expected<gsl::span<typename Device::const_buffer_type>, failure>
+vwrite_all(gsl::span<typename Device::const_buffer_type> bufs,
+           streampos pos = 0)
 {
+    SPIO_UNUSED(bufs);
+    SPIO_UNUSED(pos);
+    SPIO_UNIMPLEMENTED;
 }
 
 SPIO_END_NAMESPACE

@@ -58,7 +58,7 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    static SPIO_CONSTEXPR_DECL size_type npos = size_type(-1);
+    static SPIO_CONSTEXPR_DECL const size_type npos = size_type(-1);
 
     SPIO_CONSTEXPR_STRICT basic_string_view() SPIO_NOEXCEPT = default;
     SPIO_CONSTEXPR_STRICT basic_string_view(const_pointer s, size_type c)

@@ -31,7 +31,7 @@
 #include "third_party/fmt.h"
 #include "third_party/gsl.h"
 
-namespace spio {
+SPIO_BEGIN_NAMESPACE
 enum error {
     invalid_input,
     invalid_operation,
@@ -45,7 +45,7 @@ enum error {
     unreachable,
     undefined_error
 };
-}
+SPIO_END_NAMESPACE
 
 namespace std {
 template <>
@@ -53,7 +53,7 @@ struct is_error_code_enum<spio::error> : true_type {
 };
 }  // namespace std
 
-namespace spio {
+SPIO_BEGIN_NAMESPACE
 struct error_category : public std::error_category {
     const char* name() const noexcept override
     {
@@ -168,6 +168,6 @@ public:
 #else
 #define SPIO_UNIMPLEMENTED SPIO_UNIMPLEMENTED_DEBUG
 #endif  // NDEBUG
-}  // namespace spio
+SPIO_END_NAMESPACE
 
 #endif  // SPIO_ERROR_H
