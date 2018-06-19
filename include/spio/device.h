@@ -119,6 +119,12 @@ template <typename Device>
 using is_readable = is_detected<readable_op, Device>;
 
 template <typename Device>
+using byte_readable_op =
+    decltype(std::declval<Device>().bread(std::declval<gsl::byte&>()));
+template <typename Device>
+using is_byte_readable = is_detected<byte_readable_op, Device>;
+
+template <typename Device>
 using vector_readable_op = decltype(std::declval<Device>().vread(
     std::declval<gsl::span<gsl::span<gsl::byte>>>(),
     std::declval<streampos>()));
@@ -132,6 +138,7 @@ using is_direct_readable = is_detected<direct_readable_op, Device>;
 
 template <typename Device>
 using is_source = disjunction<is_readable<Device>,
+                              is_byte_readable<Device>,
                               is_vector_readable<Device>,
                               is_direct_readable<Device>>;
 

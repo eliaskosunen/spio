@@ -58,6 +58,7 @@ public:
         return m_handle;
     }
 
+#if 0
     result read(gsl::span<gsl::byte> s, bool& eof)
     {
         Expects(is_open());
@@ -76,6 +77,26 @@ public:
             }
         }
         return b;
+    }
+#endif
+    nonstd::expected<bool, failure> bread(gsl::byte& result)
+    {
+        Expects(is_open());
+
+        if (std::feof(m_handle) != 0) {
+            return nonstd::make_unexpected(end_of_file);
+        }
+
+        auto n = std::fread(std::addressof(result), 1, 1, m_handle);
+        if (SPIO_UNLIKELY(n == 0)) {
+            if (SPIO_UNLIKELY(std::ferror(m_handle) != 0)) {
+                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+            }
+            if (std::feof(m_handle) != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     bool putback(gsl::byte b)
@@ -197,7 +218,7 @@ public:
     using stdio_device::is_open;
     using stdio_device::open;
     using stdio_device::putback;
-    using stdio_device::read;
+    using stdio_device::bread;
     using stdio_device::seek;
 };
 

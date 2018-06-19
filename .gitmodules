@@ -7,3 +7,6 @@
 [submodule "include/spio/third_party/fmt"]
 	path = include/spio/third_party/fmt
 	url = https://github.com/fmtlib/fmt
+[submodule "tests/doctest"]
+	path = tests/doctest
+	url = https://github.com/onqtam/doctest

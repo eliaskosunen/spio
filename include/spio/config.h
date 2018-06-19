@@ -21,6 +21,8 @@
 #ifndef SPIO_CONFIG_H
 #define SPIO_CONFIG_H
 
+#include <cstddef>
+
 #define SPIO_STD_11 201103L
 #define SPIO_STD_14 201402L
 #define SPIO_STD_17 201703L
@@ -330,6 +332,12 @@
 // gcc 4.4
 // clang 2.9
 // msvc 18.0 (2013)
+// intel 12.1
+//
+// nullptr:
+// gcc 4.6
+// clang 2.9
+// msvc 16.0 (2010)
 // intel 12.1
 
 #ifndef SPIO_USE_AFIO

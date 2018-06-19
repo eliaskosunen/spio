@@ -71,8 +71,8 @@ public:
             return {0, end_of_file};
         }
         auto dist = std::distance(m_it, m_buf->end());
-        auto n = std::min(dist, s.size());
-        std::copy_n(m_it, s.begin());
+        auto n = std::min(dist, static_cast<decltype(dist)>(s.size()));
+        std::copy_n(m_it, n, s.begin());
         m_it += n;
         if (m_it == m_buf->end()) {
             eof = true;
@@ -194,11 +194,10 @@ template <template <typename...> class Container>
 class basic_container_device
     : private detail::basic_container_device_impl<Container, false> {
     using base = detail::basic_container_device_impl<Container, false>;
-    static_assert(is_sink<basic_container_device<Container>>::value, "");
-    static_assert(is_source<basic_container_device<Container>>::value, "");
 
 public:
     using base::base;
+    using base::container;
     using base::read;
     using base::write;
 };
@@ -207,10 +206,10 @@ template <template <typename...> class Container>
 class basic_container_sink
     : private detail::basic_container_device_impl<Container, false> {
     using base = detail::basic_container_device_impl<Container, false>;
-    static_assert(is_sink<basic_container_sink<Container>>::value, "");
 
 public:
     using base::base;
+    using base::container;
     using base::write;
 };
 
@@ -218,10 +217,10 @@ template <template <typename...> class Container>
 class basic_container_source
     : private detail::basic_container_device_impl<Container, true> {
     using base = detail::basic_container_device_impl<Container, true>;
-    static_assert(is_source<basic_container_source<Container>>::value, "");
 
 public:
     using base::base;
+    using base::container;
     using base::read;
 };
 

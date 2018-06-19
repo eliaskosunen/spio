@@ -68,72 +68,143 @@ vread_all(gsl::span<typename VectorReadable::buffer_type> bufs,
     SPIO_UNIMPLEMENTED;
 }
 
-template <typename Readable>
-class buffered_readable {
+namespace detail {
+template <typename Source>
+class basic_buffered_source_base {
 public:
-    using readable_type = Readable;
-    using buffer_type = std::vector<gsl::byte>;
-    using iterator = buffer_type::iterator;
-    using size_type = buffer_type::size_type;
+    using source_type = Source;
 
-    buffered_readable(readable_type&& r, size_type n)
-        : m_readable(std::move(r)),
-          m_buffer(n),
-          m_begin(m_buffer.begin()),
-          m_next(m_buffer.begin()),
-          m_end(m_buffer.begin() + 1)
-    {
-    }
+    basic_buffered_source_base(source_type&& s) : m_source(std::move(s)) {}
 
-    size_type in_use() const
+    source_type& get() SPIO_NOEXCEPT
     {
-        return std::distance(m_begin, m_next);
+        return m_source;
     }
-    void resize(size_type n)
+    const source_type& get() const SPIO_NOEXCEPT
     {
-        Expects(n >= in_use());
-
-        m_buffer.resize(n);
+        return m_source;
     }
-
-    size_type space_left() const
-    {
-        return std::distance(m_next, m_end);
-    }
-
-    readable_type& get() SPIO_NOEXCEPT
-    {
-        return m_readable;
-    }
-    const readable_type& get() const SPIO_NOEXCEPT
-    {
-        return m_readable;
-    }
-    readable_type& operator*() SPIO_NOEXCEPT
+    source_type& operator*() SPIO_NOEXCEPT
     {
         return get();
     }
-    const readable_type& operator*() const SPIO_NOEXCEPT
+    const source_type& operator*() const SPIO_NOEXCEPT
     {
         return get();
     }
-    readable_type* operator->() SPIO_NOEXCEPT
+    source_type* operator->() SPIO_NOEXCEPT
     {
         return std::addressof(get());
     }
-    const readable_type* operator->() const SPIO_NOEXCEPT
+    const source_type* operator->() const SPIO_NOEXCEPT
     {
         return std::addressof(get());
     }
 
 private:
-    result read_into_buffer(gsl::span<gsl::byte> s) {}
+    source_type m_source;
+};
+}  // namespace detail
 
-    readable_type m_readable;
+template <typename Readable>
+class basic_buffered_readable
+    : public detail::basic_buffered_source_base<Readable> {
+    using base = detail::basic_buffered_source_base<Readable>;
+
+public:
+    using readable_type = typename base::source_type;
+    using buffer_type = gsl::span<gsl::byte>;
+    using iterator = buffer_type::iterator;
+    using size_type = std::ptrdiff_t;
+
+    basic_buffered_readable(readable_type&& r, buffer_type b)
+        : base(std::move(r)),
+          m_buffer(b),
+          m_begin(m_buffer.begin()),
+          m_next(m_buffer.begin())
+    {
+    }
+
+    size_type free_begin() const
+    {
+        return std::distance(m_buffer.begin(), m_begin);
+    }
+    size_type in_use() const
+    {
+        return std::distance(m_begin, m_next);
+    }
+    size_type free_end() const
+    {
+        return std::distance(m_next, m_buffer.end());
+    }
+
+    result read(gsl::span<gsl::byte> s, bool& eof)
+    {
+        auto n = read_from_buffer(
+            s.first(std::min(in_use(), static_cast<size_type>(s.size()))));
+        if (n == s.size()) {
+            return n;
+        }
+        s = s.subspan(n);
+        if (s.size() > free_end()) {
+            push_backward();
+        }
+        auto r = read_into_buffer(s.size(), eof);
+        read_from_buffer(s.first(r.value()));
+        return {r.value() + n, r.inspect_error()};
+    }
+    result putback(gsl::span<gsl::byte> s)
+    {
+        if (free_begin() >= s.size()) {
+            std::copy(s.begin(), s.end(), m_begin - s.size());
+            m_begin -= s.size();
+            return s.size();
+        }
+        push_forward();
+        auto n = std::min(free_begin(), s.size());
+        std::copy(s.begin(), s.begin() + n, m_begin - n);
+        m_begin -= n;
+        if (n != s.size()) {
+            return {n, out_of_memory};
+        }
+        return n;
+    }
+
+private:
+    result read_into_buffer(size_type n, bool& eof)
+    {
+        Expects(n <= free_end());
+
+        auto s = gsl::make_span(&*m_next, n);
+        auto r = base::get().read(s, eof);
+        m_next += r.value();
+        return r;
+    }
+    size_type read_from_buffer(gsl::span<gsl::byte> s)
+    {
+        Expects(s.size() <= in_use());
+        std::copy(m_begin, m_begin + s.size(), s.begin());
+        m_begin += s.size();
+        return s.size();
+    }
+    void push_backward()
+    {
+        m_next = std::copy(m_begin, m_next, m_buffer.begin());
+        m_begin = m_buffer.begin();
+
+        Ensures(free_begin() == 0);
+    }
+    void push_forward()
+    {
+        m_next = std::copy(m_begin, m_next, m_begin + free_end());
+        m_begin += free_end();
+
+        Ensures(free_end() == 0);
+    }
+
     buffer_type m_buffer;
     iterator m_begin;
     iterator m_next;
-    iterator m_end;
 };
 
 SPIO_END_NAMESPACE

@@ -9,25 +9,23 @@ int main()
 
         spio::stdio_handle_device in(stdin);
         std::string buf;
-        char ch{};
+        gsl::byte ch{};
         bool eof = false;
         while (!eof) {
-            auto ret = in.read(
-                spio::gsl::as_writeable_bytes(spio::gsl::make_span(&ch, 1)),
-                eof);
-            if (ret.has_error()) {
+            auto ret = in.bread(ch);
+            if (ret) {
                 out.write(spio::gsl::byte_span("Error: "));
                 out.write(spio::gsl::as_bytes(spio::gsl::make_span(
                     ret.error().what(), std::strlen(ret.error().what()))));
             }
-            if (ch != '\n') {
-                buf.push_back(ch);
+            if (ch != gsl::to_byte('\n')) {
+                buf.push_back(gsl::to_uchar(ch));
             }
             else {
                 break;
             }
         }
-        in.putback(spio::gsl::to_byte(ch));
+        in.putback(ch);
 
         buf = "You said: '" + buf;
         buf.push_back('\'');
