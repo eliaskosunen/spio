@@ -23,3 +23,4 @@ endfunction()
 
 add_spio_test(stdio_device)
 add_spio_test(source_buffer)
+add_spio_test(ring)

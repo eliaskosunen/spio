@@ -18,36 +18,43 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef SPIO_SPIO_H
-#define SPIO_SPIO_H
+#define SPIO_RING_USE_MMAP 0
+#include <spio/spio.h>
+#include "doctest.h"
 
-#include "config.h"
+TEST_CASE("ring")
+{
+    SUBCASE("construct")
+    {
+        spio::ring r(10);
+        CHECK(r.empty());
+        CHECK(r.size() >= 10);
+        CHECK(r.span().size() == r.size());
+        CHECK(r.in_use() == 0);
+        CHECK(r.free_space() == r.size());
+    }
 
-#if SPIO_GCC_COMPAT
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#endif
+    SUBCASE("basic operations")
+    {
+        spio::ring r(1024);
+        char str[] = "Hello world!";
+        auto strspan = gsl::make_span(str, std::strlen(str));
 
-#include "ring.h"
-#include "string_view.h"
-#include "util.h"
+        CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
+        CHECK(r.in_use() == strspan.size());
+        CHECK(!r.empty());
 
-#include "container_device.h"
-#include "memory_device.h"
-#include "stdio_device.h"
+        CHECK(r.read(gsl::as_writeable_bytes(strspan)) == strspan.size());
+        CHECK_EQ(std::strcmp(strspan.data(), "Hello world!"), 0);
+        CHECK(r.in_use() == 0);
+        CHECK(r.empty());
 
-#if SPIO_USE_AFIO
-#include "afio_device.h"
-#endif
-
-#include "sink.h"
-#include "source.h"
-
-#include "stream_base.h"
-
-#if SPIO_GCC_COMPAT
-#pragma GCC diagnostic pop
-#endif
-
-#endif  // SPIO_SPIO_H
+        CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
+        CHECK(r.in_use() == strspan.size());
+        CHECK(!r.empty());
+        
+        r.clear();
+        CHECK(r.in_use() == 0);
+        CHECK(r.empty());
+    }
+}

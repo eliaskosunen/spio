@@ -94,6 +94,12 @@
 #define SPIO_WINDOWS 0
 #endif
 
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#define SPIO_POSIX 1
+#else
+#define SPIO_POSIX 0
+#endif
+
 #ifdef _MSVC_LANG
 #define SPIO_MSVC_LANG _MSVC_LANG
 #else

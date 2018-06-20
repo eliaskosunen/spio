@@ -523,10 +523,50 @@ make_unexpected_from_current_exception() -> unexpected_type< std::exception_ptr 
 
 /// in-place tag: construct a value in-place (should come from std::experimental::optional)
 
-#ifndef optional_IN_PLACE_DEFINED
-struct in_place_t{};
+#ifndef NONSTD_IN_PLACE_DEFINED
+#define NONSTD_IN_PLACE_DEFINED
+namespace detail {
 
-nsel_inline17 constexpr in_place_t in_place{};
+template< class T >
+struct in_place_type_tag {};
+
+template< std::size_t I >
+struct in_place_index_tag {};
+
+} // namespace detail
+
+struct in_place_t {};
+
+template< class T >
+inline in_place_t in_place( detail::in_place_type_tag<T> = detail::in_place_type_tag<T>() )
+{
+    return in_place_t();
+}
+
+template< std::size_t I >
+inline in_place_t in_place( detail::in_place_index_tag<I> = detail::in_place_index_tag<I>() )
+{
+    return in_place_t();
+}
+
+template< class T >
+inline in_place_t in_place_type( detail::in_place_type_tag<T> = detail::in_place_type_tag<T>() )
+{
+    return in_place_t();
+}
+
+template< std::size_t I >
+inline in_place_t in_place_index( detail::in_place_index_tag<I> = detail::in_place_index_tag<I>() )
+{
+    return in_place_t();
+}
+
+// mimic templated typedef:
+
+#define nonstd_lite_in_place_type_t( T)  nonstd::in_place_t(&)( nonstd::detail::in_place_type_tag<T>  )
+#define nonstd_lite_in_place_index_t(T)  nonstd::in_place_t(&)( nonstd::detail::in_place_index_tag<I> )
+
+#define nonstd_lite_HAVE_IN_PLACE_TYPES  1
 #endif
 
 /// unexpect tag, in_place_unexpected tag: construct an error

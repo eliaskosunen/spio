@@ -49,9 +49,43 @@ TEST_CASE("source_buffer")
     {
         std::vector<gsl::byte> read(container.size());
         bool eof = false;
-        buf.read(gsl::make_span(read), eof);
+        auto ret = buf.read(gsl::make_span(read), eof);
         CHECK(eof);
         CHECK(read.size() == container.size());
+        CHECK(ret.value() == container.size());
+        CHECK(!ret.has_error());
         CHECK(read == container);
+        CHECK(buf.free_begin() == container.size());
+        CHECK(buf.in_use() == 0);
+        CHECK(buf.free_end() == 0);
+    }
+
+    SUBCASE("basic putback")
+    {
+        std::vector<gsl::byte> read(container.size());
+        bool eof = false;
+        auto ret = buf.read(gsl::make_span(read).first(1), eof);
+        CHECK(!eof);
+        CHECK(ret.value() == 1);
+        CHECK(!ret.has_error());
+        CHECK(read[0] == container[0]);
+        CHECK(buf.free_begin() == 1);
+        CHECK(buf.in_use() == 0);
+        CHECK(buf.free_end() == container.size() - 1);
+
+        ret = buf.putback(gsl::make_span(read).first(1));
+        CHECK(ret.value() == 1);
+        CHECK(!ret.has_error());
+        CHECK(buf.free_begin() == 0);
+        CHECK(buf.in_use() == 1);
+        CHECK(buf.free_end() == container.size() - 1);
+
+        ret = buf.read(gsl::make_span(read), eof);
+        CHECK(eof);
+        CHECK(!ret.has_error());
+        CHECK(read == container);
+        CHECK(buf.free_begin() == container.size());
+        CHECK(buf.in_use() == 0);
+        CHECK(buf.free_end() == 0);
     }
 }

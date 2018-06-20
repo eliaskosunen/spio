@@ -67,7 +67,8 @@ namespace nonstd {
     using std::variant_alternative_t;
     using std::hash;
 
-#ifndef optional_IN_PLACE_DEFINED
+#ifndef NONSTD_IN_PLACE_DEFINED
+#define NONSTD_IN_PLACE_DEFINED
     using std::in_place;
     using std::in_place_t;
     using std::in_place_type;
@@ -261,9 +262,11 @@ namespace nonstd {
 
 namespace nonstd {
 
+#ifndef NONSTD_IN_PLACE_DEFINED
+#define NONSTD_IN_PLACE_DEFINED
+
 namespace detail {
 
-#ifndef optional_IN_PLACE_DEFINED
 template< class T >
 struct in_place_type_tag {};
 
@@ -297,7 +300,6 @@ inline in_place_t in_place_index( detail::in_place_index_tag<I> = detail::in_pla
 {
     return in_place_t();
 }
-#endif
 
 // mimic templated typedef:
 
@@ -305,6 +307,8 @@ inline in_place_t in_place_index( detail::in_place_index_tag<I> = detail::in_pla
 #define nonstd_lite_in_place_index_t(T)  nonstd::in_place_t(&)( nonstd::detail::in_place_index_tag<I> )
 
 #define nonstd_lite_HAVE_IN_PLACE_TYPES  1
+
+#endif
 
 } // namespace nonstd
 

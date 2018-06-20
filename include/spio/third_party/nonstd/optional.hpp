@@ -51,13 +51,15 @@ namespace nonstd {
     using std::nullopt;
     using std::nullopt_t;
 
-#define optional_IN_PLACE_DEFINED
+#ifndef NONSTD_IN_PLACE_DEFINED
+#define NONSTD_IN_PLACE_DEFINED
     using std::in_place;
     using std::in_place_t;
     using std::in_place_type;
     using std::in_place_index;
     using std::in_place_type_t;
     using std::in_place_index_t;
+#endif
 
     using std::operator==;
     using std::operator!=;
@@ -278,13 +280,12 @@ namespace nonstd { namespace optional_lite { namespace detail {
 // in_place: code duplicated in any-lite, optional-lite, variant-lite:
 //
 
-#ifndef nonstd_lite_HAVE_IN_PLACE_TYPES
-
+#ifndef NONSTD_IN_PLACE_DEFINED
+#define NONSTD_IN_PLACE_DEFINED
 namespace nonstd {
 
 namespace detail {
 
-#define optional_IN_PLACE_DEFINED
 template< class T >
 struct in_place_type_tag {};
 

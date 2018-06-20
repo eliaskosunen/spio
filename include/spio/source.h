@@ -118,11 +118,19 @@ public:
     using size_type = std::ptrdiff_t;
 
     basic_buffered_readable(readable_type&& r, buffer_type b)
+        : basic_buffered_readable(std::move(r), b, b.size())
+    {
+    }
+    basic_buffered_readable(readable_type&& r,
+                            buffer_type b,
+                            size_type lookahead)
         : base(std::move(r)),
           m_buffer(b),
           m_begin(m_buffer.begin()),
-          m_next(m_buffer.begin())
+          m_next(m_buffer.begin()),
+          m_lookahead(lookahead)
     {
+        Expects(lookahead <= b.size());
     }
 
     size_type free_begin() const
@@ -161,7 +169,7 @@ public:
             return s.size();
         }
         push_forward();
-        auto n = std::min(free_begin(), s.size());
+        auto n = std::min(free_begin(), static_cast<size_type>(s.size()));
         std::copy(s.begin(), s.begin() + n, m_begin - n);
         m_begin -= n;
         if (n != s.size()) {
@@ -179,6 +187,12 @@ private:
         auto r = base::get().read(s, eof);
         m_next += r.value();
         return r;
+
+        /* auto to_read = std::min(free_end(), std::max(n, m_lookahead)); */
+        /* auto s = gsl::make_span(&*m_next, to_read); */
+        /* auto r = base::get().read(s, eof); */
+        /* m_next += r.value(); */
+        /* return {std::min(r.value(), n), r.inspect_error()}; */
     }
     size_type read_from_buffer(gsl::span<gsl::byte> s)
     {
@@ -205,6 +219,7 @@ private:
     buffer_type m_buffer;
     iterator m_begin;
     iterator m_next;
+    size_type m_lookahead;
 };
 
 SPIO_END_NAMESPACE
