@@ -28,6 +28,9 @@
 #pragma clang diagnostic ignored "-Wunused-template"
 #endif
 
+#define gsl_CONFIG_SPAN_INDEX_TYPE std::ptrdiff_t
+#define gsl_CONFIG_DEPRECATE_TO_LEVEL 5
+
 #include "gsl.hpp"
 
 SPIO_BEGIN_NAMESPACE

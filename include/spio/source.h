@@ -23,10 +23,10 @@
 
 #include "config.h"
 
-#include <vector>
 #include "device.h"
 #include "error.h"
 #include "result.h"
+#include "ring.h"
 #include "third_party/expected.h"
 #include "third_party/gsl.h"
 
@@ -104,6 +104,14 @@ public:
 private:
     source_type m_source;
 };
+
+template <typename T>
+T round_up_multiple_of_two(T n, T multiple)
+{
+    Expects(multiple);
+    Expects((multiple & (multiple - 1)) == 0);
+    return (n + multiple - 1) & -multiple;
+}
 }  // namespace detail
 
 template <typename Readable>
@@ -113,113 +121,91 @@ class basic_buffered_readable
 
 public:
     using readable_type = typename base::source_type;
-    using buffer_type = gsl::span<gsl::byte>;
-    using iterator = buffer_type::iterator;
+    using buffer_type = ring;
     using size_type = std::ptrdiff_t;
 
-    basic_buffered_readable(readable_type&& r, buffer_type b)
-        : basic_buffered_readable(std::move(r), b, b.size())
-    {
-    }
+    static SPIO_CONSTEXPR_DECL const size_type buffer_size = BUFSIZ * 2;
+
     basic_buffered_readable(readable_type&& r,
-                            buffer_type b,
-                            size_type lookahead)
+                            size_type s = buffer_size,
+                            size_type rs = -1)
         : base(std::move(r)),
-          m_buffer(b),
-          m_begin(m_buffer.begin()),
-          m_next(m_buffer.begin()),
-          m_lookahead(lookahead)
+          m_buffer(detail::round_up_power_of_two(s)),
+          m_read_size(rs)
     {
-        Expects(lookahead <= b.size());
+        if (m_read_size == -1) {
+            m_read_size = m_buffer.size() / 2;
+        }
+        m_read_size = detail::round_up_power_of_two(m_read_size);
+        Expects(rs <= m_buffer.size());
     }
 
-    size_type free_begin() const
+    size_type free_space() const
     {
-        return std::distance(m_buffer.begin(), m_begin);
+        return m_buffer.free_space();
     }
     size_type in_use() const
     {
-        return std::distance(m_begin, m_next);
+        return m_buffer.in_use();
     }
-    size_type free_end() const
+    size_type size() const
     {
-        return std::distance(m_next, m_buffer.end());
+        return m_buffer.size();
     }
 
     result read(gsl::span<gsl::byte> s, bool& eof)
     {
-        auto n = read_from_buffer(
-            s.first(std::min(in_use(), static_cast<size_type>(s.size()))));
-        if (n == s.size()) {
-            return n;
+        auto r = [&]() -> result {
+            if (in_use() < s.size() && !m_eof) {
+                return read_into_buffer(get_read_size(s.size()), m_eof);
+            }
+            return {0};
+        }();
+        if (m_eof && s.size() > in_use()) {
+            eof = true;
         }
-        s = s.subspan(n);
-        if (s.size() > free_end()) {
-            push_backward();
-        }
-        auto r = read_into_buffer(s.size(), eof);
-        read_from_buffer(s.first(r.value()));
-        return {r.value() + n, r.inspect_error()};
+        s = s.first(std::min(s.size(), in_use()));
+        auto bytes_read = read_from_buffer(s);
+        Ensures(bytes_read == s.size());
+        return {bytes_read, r.inspect_error()};
     }
     result putback(gsl::span<gsl::byte> s)
     {
-        if (free_begin() >= s.size()) {
-            std::copy(s.begin(), s.end(), m_begin - s.size());
-            m_begin -= s.size();
-            return s.size();
+        if (s.size() > free_space()) {
+            return {m_buffer.write_tail(s), out_of_memory};
         }
-        push_forward();
-        auto n = std::min(free_begin(), static_cast<size_type>(s.size()));
-        std::copy(s.begin(), s.begin() + n, m_begin - n);
-        m_begin -= n;
-        if (n != s.size()) {
-            return {n, out_of_memory};
-        }
-        return n;
+        return m_buffer.write_tail(s);
     }
 
 private:
+    size_type get_read_size(size_type n)
+    {
+        return std::min(detail::round_up_multiple_of_two(n, m_read_size),
+                        free_space());
+    }
+
     result read_into_buffer(size_type n, bool& eof)
     {
-        Expects(n <= free_end());
-
-        auto s = gsl::make_span(&*m_next, n);
-        auto r = base::get().read(s, eof);
-        m_next += r.value();
-        return r;
-
-        /* auto to_read = std::min(free_end(), std::max(n, m_lookahead)); */
-        /* auto s = gsl::make_span(&*m_next, to_read); */
-        /* auto r = base::get().read(s, eof); */
-        /* m_next += r.value(); */
-        /* return {std::min(r.value(), n), r.inspect_error()}; */
+        Expects(n <= free_space());
+        auto has_read = 0;
+        for (auto s : m_buffer.direct_write(n)) {
+            auto r = base::get().read(s, eof);
+            has_read += r.value();
+            if (r.has_error()) {
+                return {has_read, r.inspect_error()};
+            }
+        }
+        m_buffer.move_head(-(n - has_read));
+        return has_read;
     }
     size_type read_from_buffer(gsl::span<gsl::byte> s)
     {
-        Expects(s.size() <= in_use());
-        std::copy(m_begin, m_begin + s.size(), s.begin());
-        m_begin += s.size();
-        return s.size();
-    }
-    void push_backward()
-    {
-        m_next = std::copy(m_begin, m_next, m_buffer.begin());
-        m_begin = m_buffer.begin();
-
-        Ensures(free_begin() == 0);
-    }
-    void push_forward()
-    {
-        m_next = std::copy(m_begin, m_next, m_begin + free_end());
-        m_begin += free_end();
-
-        Ensures(free_end() == 0);
+        return m_buffer.read(s);
     }
 
     buffer_type m_buffer;
-    iterator m_begin;
-    iterator m_next;
-    size_type m_lookahead;
+    size_type m_read_size;
+    bool m_eof{false};
 };
 
 SPIO_END_NAMESPACE

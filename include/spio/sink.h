@@ -26,6 +26,7 @@
 #include "device.h"
 #include "error.h"
 #include "result.h"
+#include "ring.h"
 #include "third_party/expected.h"
 
 #ifndef SPIO_WRITE_ALL_MAX_ATTEMPTS
@@ -62,6 +63,59 @@ vwrite_all(gsl::span<typename Device::const_buffer_type> bufs,
     SPIO_UNUSED(pos);
     SPIO_UNIMPLEMENTED;
 }
+
+enum class buffer_mode { external, full, line, none };
+
+namespace detail {
+template <typename Sink>
+class basic_buffered_sink_base {
+public:
+    using sink_type = Sink;
+
+    basic_buffered_sink_base(sink_type&& s) : m_source(std::move(s)) {}
+
+    sink_type& get() SPIO_NOEXCEPT
+    {
+        return m_source;
+    }
+    const sink_type& get() const SPIO_NOEXCEPT
+    {
+        return m_source;
+    }
+    sink_type& operator*() SPIO_NOEXCEPT
+    {
+        return get();
+    }
+    const sink_type& operator*() const SPIO_NOEXCEPT
+    {
+        return get();
+    }
+    sink_type* operator->() SPIO_NOEXCEPT
+    {
+        return std::addressof(get());
+    }
+    const sink_type* operator->() const SPIO_NOEXCEPT
+    {
+        return std::addressof(get());
+    }
+
+private:
+    sink_type m_source;
+};
+}  // namespace detail
+
+template <typename Writable>
+class basic_buffered_writable
+    : private detail::basic_buffered_sink_base<Writable> {
+    using base = detail::basic_buffered_sink_base<Writable>;
+
+public:
+    using writable_type = typename base::sink_type;
+    using buffer_type = ring;
+    using size_type = std::ptrdiff_t;
+
+    basic_buffered_writable();
+};
 
 SPIO_END_NAMESPACE
 

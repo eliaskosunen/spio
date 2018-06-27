@@ -26,6 +26,7 @@
 #include "error.h"
 #include "third_party/expected.h"
 #include "third_party/gsl.h"
+#include "third_party/optional.h"
 
 #if SPIO_POSIX
 #include <sys/mman.h>
@@ -39,11 +40,6 @@
 SPIO_BEGIN_NAMESPACE
 
 namespace detail {
-#if SPIO_POSIX && SPIO_RING_USE_MMAP
-#ifndef MAP_ANONYMOUS
-#define MAP_ANONYMOUS MAP_ANON
-#endif
-
 template <typename T>
 T round_up_power_of_two(T n)
 {
@@ -52,6 +48,19 @@ T round_up_power_of_two(T n)
         p *= 2;
     return p;
 }
+#if SPIO_HAS_BUILTIN(__builtin_clz)
+inline uint32_t round_up_power_of_two(uint32_t n)
+{
+    Expects(n > 1);
+    Expects(n <= std::numeric_limits<uint32_t>::max() / 2 + 1);
+    return 1 << (32 - __builtin_clz(n - 1));
+}
+#endif
+
+#if SPIO_POSIX && SPIO_RING_USE_MMAP
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS MAP_ANON
+#endif
 
 class ring_base_posix {
 public:
@@ -67,7 +76,7 @@ public:
 
     ~ring_base_posix() SPIO_NOEXCEPT
     {
-        ::munmap(m_ptr, m_size * 2);
+        ::munmap(m_ptr - m_size, m_size * 3);
     }
 
     nonstd::expected<void, failure> init(size_type size)
@@ -90,7 +99,7 @@ public:
         }
 
         m_ptr =
-            static_cast<gsl::byte*>(::mmap(nullptr, m_size * 2, PROT_NONE,
+            static_cast<gsl::byte*>(::mmap(nullptr, m_size * 3, PROT_NONE,
                                            MAP_ANONYMOUS | MAP_PRIVATE, -1, 0));
         if (m_ptr == MAP_FAILED) {
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
@@ -111,12 +120,22 @@ public:
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
         }
 
+        auto addr3 = ::mmap(m_ptr + m_size * 2, m_size, PROT_READ | PROT_WRITE,
+                            MAP_FIXED | MAP_SHARED, fd, 0);
+        if (addr3 != m_ptr + m_size * 2) {
+            ::munmap(m_ptr, m_size * 2);
+            /* ::munmap(addr, real_size); */
+            return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+        }
+
         if (::close(fd)) {
             ::munmap(m_ptr, m_size * 2);
             /* ::munmap(addr, real_size); */
             /* ::munmap(addr2, real_size); */
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
         }
+        m_ptr += m_size;
+
         return {};
     }
 
@@ -124,13 +143,28 @@ public:
     {
         auto written =
             std::min(static_cast<size_type>(data.size()), free_space());
-        std::copy(data.begin(), data.begin() + written, m_ptr + m_tail);
-        m_tail += written;
-        if (m_size < m_tail) {
-            m_tail %= m_size;
+        std::copy(data.begin(), data.begin() + written, m_ptr + m_head);
+        m_head += written;
+        if (m_size < m_head) {
+            m_head &= (m_size - 1);
         }
         if (data.size() != 0) {
             m_empty = false;
+        }
+        return written;
+    }
+    size_type write_tail(gsl::span<const gsl::byte> data)
+    {
+        auto written =
+            std::min(static_cast<size_type>(data.size()), free_space());
+        std::reverse_copy(data.rbegin(), data.rbegin() + written,
+                          m_ptr + m_tail - written);
+        m_tail -= written;
+        if (m_tail < 0) {
+            m_tail &= (m_size - 1);
+        }
+        if (data.size() != 0) {
+            m_empty = true;
         }
         return written;
     }
@@ -141,12 +175,21 @@ public:
         }
 
         auto n = std::min(static_cast<size_type>(data.size()), in_use());
-        std::copy(m_ptr + m_head, m_ptr + m_head + n, data.begin());
-        m_head += n;
+        std::copy(m_ptr + m_tail, m_ptr + m_tail + n, data.begin());
+        m_tail += n;
+        if (m_size < m_tail) {
+            m_tail &= (m_size - 1);
+        }
         if (m_head == m_tail) {
             m_empty = true;
         }
         return n;
+    }
+
+    gsl::span<const value_type> peek(size_type n) const
+    {
+        Expects(size() >= n);
+        return gsl::make_span(m_ptr + m_tail - n, n);
     }
 
     void clear()
@@ -157,10 +200,10 @@ public:
 
     size_type in_use() const
     {
-        if (m_head <= m_tail) {
-            return m_tail - m_head;
+        if (m_tail <= m_head) {
+            return m_head - m_tail;
         }
-        return m_size - (m_head - m_tail);
+        return m_size - (m_tail - m_head);
     }
     size_type free_space() const
     {
@@ -191,6 +234,130 @@ public:
     size_type tail() const
     {
         return m_tail;
+    }
+
+    class direct_read_t {
+    public:
+        direct_read_t(ring_base_posix& r, size_type n, size_type i = 0)
+            : m_ring(r), m_n(n), m_i(i)
+        {
+        }
+
+        direct_read_t begin()
+        {
+            return *this;
+        }
+        direct_read_t end() const
+        {
+            return {m_ring, m_n, 1};
+        }
+
+        gsl::span<const gsl::byte> operator*()
+        {
+            return gsl::make_span(m_ring.data() + m_ring.tail(), m_n);
+        }
+
+        direct_read_t& operator++()
+        {
+            m_ring.move_tail(m_n);
+            ++m_i;
+            return *this;
+        }
+        direct_read_t operator++(int)
+        {
+            direct_read_t tmp(*this);
+            operator++();
+            return tmp;
+        }
+
+        bool operator==(const direct_read_t& r) const
+        {
+            return m_i == r.m_i;
+        }
+        bool operator!=(const direct_read_t& r) const
+        {
+            return !(*this == r);
+        }
+
+    private:
+        ring_base_posix& m_ring;
+        size_type m_n;
+        size_type m_i;
+    };
+
+    direct_read_t direct_read(size_type n)
+    {
+        Expects(n <= in_use());
+        return direct_read_t(*this, n);
+    }
+
+    class direct_write_t {
+    public:
+        direct_write_t(ring_base_posix& r, size_type n, size_type i = 0)
+            : m_ring(r), m_n(n), m_i(i)
+        {
+        }
+
+        direct_write_t begin()
+        {
+            return *this;
+        }
+        direct_write_t end() const
+        {
+            return {m_ring, m_n, 1};
+        }
+
+        gsl::span<gsl::byte> operator*()
+        {
+            return gsl::make_span(m_ring.data() + m_ring.head(), m_n);
+        }
+
+        direct_write_t& operator++()
+        {
+            m_ring.move_head(m_n);
+            ++m_i;
+            return *this;
+        }
+        direct_write_t operator++(int)
+        {
+            direct_write_t tmp(*this);
+            operator++();
+            return tmp;
+        }
+
+        bool operator==(const direct_write_t& r) const
+        {
+            return m_i == r.m_i;
+        }
+        bool operator!=(const direct_write_t& r) const
+        {
+            return !(*this == r);
+        }
+
+    private:
+        ring_base_posix& m_ring;
+        size_type m_n;
+        size_type m_i;
+    };
+
+    direct_write_t direct_write(size_type n)
+    {
+        Expects(n <= free_space());
+        return direct_write_t(*this, n);
+    }
+
+    void move_head(size_type off)
+    {
+        m_head += off;
+        m_head &= (m_size - 1);
+        m_empty = false;
+    }
+    void move_tail(size_type off)
+    {
+        m_tail += off;
+        m_tail &= (m_size - 1);
+        if (m_head == m_tail)
+            m_empty = true;
     }
 
 private:
@@ -244,6 +411,24 @@ public:
 
         return write(data);
     }
+    size_type write_tail(gsl::span<const gsl::byte> data)
+    {
+        auto written = std::min(static_cast<size_type>(data.size()), m_tail);
+        std::reverse_copy(data.rbegin(), data.rbegin() + written,
+                          m_buf.get() + m_tail - written);
+        m_tail -= written;
+        data = data.first(data.size() - written);
+        if (data.size() == 0) {
+            return written;
+        }
+
+        auto space =
+            std::min(static_cast<size_type>(data.size()), m_size - m_head - 1);
+        std::reverse_copy(data.rbegin(), data.rbegin() + space,
+                          m_buf.get() + m_size - space);
+        m_tail = m_size - space;
+        return written + space;
+    }
     size_type read(gsl::span<gsl::byte> data)
     {
         if (empty()) {
@@ -264,6 +449,7 @@ public:
             }
             return n;
         }
+
         auto space_end = m_size - m_tail;
         auto n = std::min(space_end, static_cast<size_type>(data.size()));
         std::copy(m_buf.get() + m_tail, m_buf.get() + m_tail + n, data.begin());
@@ -276,7 +462,13 @@ public:
             return n;
         }
 
-        return read(data);
+        return read(data) + n;
+    }
+
+    gsl::span<const value_type> peek(size_type n) const
+    {
+        Expects(size() >= n);
+        return gsl::make_span(m_buf.get() + m_tail - n, n);
     }
 
     void clear()
@@ -296,10 +488,10 @@ public:
 
     size_type in_use() const
     {
-        if (m_head <= m_tail) {
-            return m_tail - m_head;
+        if (m_tail <= m_head) {
+            return m_head - m_tail;
         }
-        return m_size - (m_head - m_tail);
+        return m_size - (m_tail - m_head);
     }
     size_type free_space() const
     {
@@ -323,6 +515,160 @@ public:
         return m_tail;
     }
 
+    class direct_read_t {
+    public:
+        direct_read_t(ring_base_std& r, size_type n, size_type i = 0)
+            : m_ring(r), m_n(n), m_i(i)
+        {
+        }
+
+        direct_read_t begin()
+        {
+            return *this;
+        }
+        direct_read_t end() const
+        {
+            return {m_ring, m_n, two_ranges() ? 2 : 1};
+        }
+
+        gsl::span<const gsl::byte> operator*()
+        {
+            if (two_ranges()) {
+                if (m_i == 0) {
+                    return gsl::make_span(m_ring.data() + m_ring.tail(),
+                                          m_ring.size() - m_ring.tail());
+                }
+                return gsl::make_span(m_ring.data(),
+                                      m_n - (m_ring.size() - m_ring.tail()));
+            }
+            return gsl::make_span(m_ring.data() + m_ring.tail(), m_n);
+        }
+
+        direct_read_t& operator++()
+        {
+            m_ring.move_tail(m_n);
+            ++m_i;
+            return *this;
+        }
+        direct_read_t operator++(int)
+        {
+            direct_read_t tmp(*this);
+            operator++();
+            return tmp;
+        }
+
+        bool operator==(const direct_read_t& r) const
+        {
+            return m_i == r.m_i;
+        }
+        bool operator!=(const direct_read_t& r) const
+        {
+            return !(*this == r);
+        }
+
+    private:
+        bool two_ranges() const
+        {
+            return m_ring.head() <= m_ring.tail() &&
+                   m_n < m_ring.size() - m_ring.tail();
+        }
+
+        ring_base_std& m_ring;
+        size_type m_n;
+        size_type m_i;
+    };
+
+    direct_read_t direct_read(size_type n)
+    {
+        Expects(n <= in_use());
+        return direct_read_t(*this, n);
+    }
+
+    class direct_write_t {
+    public:
+        direct_write_t(ring_base_std& r, size_type n, size_type i = 0)
+            : m_ring(r), m_n(n), m_i(i)
+        {
+        }
+
+        direct_write_t begin()
+        {
+            return *this;
+        }
+        direct_write_t end() const
+        {
+            return {m_ring, m_n, two_ranges() ? 2 : 1};
+        }
+
+        gsl::span<gsl::byte> operator*()
+        {
+            if (two_ranges()) {
+                if (m_i == 0) {
+                    return gsl::make_span(m_ring.data() + m_ring.head(),
+                                          m_ring.size() - m_ring.head());
+                }
+                return gsl::make_span(m_ring.data(),
+                                      m_n - (m_ring.size() - m_ring.head()));
+            }
+            return gsl::make_span(m_ring.data() + m_ring.head(), m_n);
+        }
+
+        direct_write_t& operator++()
+        {
+            m_ring.move_head(m_n);
+            ++m_i;
+            return *this;
+        }
+        direct_write_t operator++(int)
+        {
+            direct_write_t tmp(*this);
+            operator++();
+            return tmp;
+        }
+
+        bool operator==(const direct_write_t& r) const
+        {
+            return m_i == r.m_i;
+        }
+        bool operator!=(const direct_write_t& r) const
+        {
+            return !(*this == r);
+        }
+
+    private:
+        bool two_ranges() const
+        {
+            return m_ring.tail() <= m_ring.head() &&
+                   m_n > m_ring.size() - m_ring.head();
+        }
+
+        ring_base_std& m_ring;
+        size_type m_n;
+        size_type m_i;
+    };
+
+    direct_write_t direct_write(size_type n)
+    {
+        Expects(n <= free_space());
+        return direct_write_t(*this, n);
+    }
+
+    void move_head(size_type off)
+    {
+        m_head += off;
+        m_head &= (m_size - 1);
+        m_empty = false;
+        Ensures(m_head > m_tail);
+    }
+    void move_tail(size_type off)
+    {
+        Expects(m_tail + off <= m_head);
+        m_tail += off;
+        m_tail &= (m_size - 1);
+        if (m_head == m_tail)
+            m_empty = true;
+    }
+
 private:
     storage_type m_buf{};
     size_type m_size{};
@@ -336,16 +682,14 @@ using ring_base = ring_base_std;
 }  // namespace detail
 
 template <typename T>
-class basic_ring : private detail::ring_base {
-    using base = detail::ring_base;
-
+class basic_ring {
 public:
     using value_type = T;
     using size_type = std::ptrdiff_t;
 
-    basic_ring(size_type n) : base()
+    basic_ring(size_type n) : m_buf{}
     {
-        auto r = base::init(n * sizeof(value_type));
+        auto r = m_buf.init(n * sizeof(value_type));
         if (!r) {
             throw r.error();
         }
@@ -353,39 +697,84 @@ public:
 
     size_type write(gsl::span<const value_type> data)
     {
-        return base::write(gsl::as_bytes(data));
+        return m_buf.write(gsl::as_bytes(data)) / sizeof(value_type);
+    }
+    size_type write_tail(gsl::span<const value_type> data)
+    {
+        return m_buf.write_tail(gsl::as_bytes(data)) / sizeof(value_type);
     }
     size_type read(gsl::span<value_type> data)
     {
-        return base::read(gsl::as_writeable_bytes(data));
+        return m_buf.read(gsl::as_writeable_bytes(data)) / sizeof(value_type);
     }
 
-    using base::clear;
+    gsl::span<const value_type> peek(size_type n) const
+    {
+        auto s = m_buf.peek(n * sizeof(value_type));
+        return gsl::make_span(reinterpret_cast<const value_type*>(s.data()),
+                              s.size() / sizeof(value_type));
+    }
+
+    void clear()
+    {
+        m_buf.clear();
+    }
 
     size_type size() const
     {
-        return base::size() / sizeof(value_type);
+        return m_buf.size() / sizeof(value_type);
     }
-    using base::empty;
+    bool empty() const
+    {
+        return m_buf.empty();
+    }
 
     size_type in_use() const
     {
-        return base::in_use() / sizeof(value_type);
+        return m_buf.in_use() / sizeof(value_type);
     }
     size_type free_space() const
     {
-        return base::free_space() / sizeof(value_type);
+        return m_buf.free_space() / sizeof(value_type);
     }
 
     gsl::span<value_type> span()
     {
-        return gsl::make_span(reinterpret_cast<value_type*>(base::data()),
+        return gsl::make_span(reinterpret_cast<value_type*>(m_buf.data()),
                               size());
     }
     gsl::span<const value_type> span() const
     {
-        return gsl::make_span(reinterpret_cast<const value_type*>(base::data()),
+        return gsl::make_span(reinterpret_cast<const value_type*>(m_buf.data()),
                               size());
+    }
+
+private:
+    detail::ring_base m_buf;
+};
+template <>
+class basic_ring<gsl::byte> : public detail::ring_base {
+    using base = detail::ring_base;
+
+public:
+    using value_type = gsl::byte;
+    using size_type = std::ptrdiff_t;
+
+    basic_ring(size_type n) : base{}
+    {
+        auto r = base::init(n * sizeof(value_type));
+        if (!r) {
+            throw r.error();
+        }
+    }
+
+    gsl::span<value_type> span()
+    {
+        return gsl::make_span(data(), size());
+    }
+    gsl::span<const value_type> span() const
+    {
+        return gsl::make_span(data(), size());
     }
 };
 
