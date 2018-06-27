@@ -29,6 +29,7 @@
 #include "ring.h"
 #include "third_party/expected.h"
 #include "third_party/gsl.h"
+#include "util.h"
 
 #ifndef SPIO_READ_ALL_MAX_ATTEMPTS
 #define SPIO_READ_ALL_MAX_ATTEMPTS 8

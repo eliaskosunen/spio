@@ -24,4 +24,19 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#endif // SPIO_DOCTEST_H
+#include <random>
+
+template <typename It>
+void fill_random(It begin, It end)
+{
+    using value_type = typename std::iterator_traits<It>::value_type;
+    static std::random_device dev;
+    static std::mt19937 eng(dev());
+
+    std::uniform_int_distribution<value_type> dist(
+        std::numeric_limits<value_type>::min(),
+        std::numeric_limits<value_type>::max());
+    std::generate(begin, end, [&]() { return dist(eng); });
+}
+
+#endif  // SPIO_DOCTEST_H

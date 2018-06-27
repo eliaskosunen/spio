@@ -27,6 +27,7 @@
 #include "third_party/expected.h"
 #include "third_party/gsl.h"
 #include "third_party/optional.h"
+#include "util.h"
 
 #if SPIO_POSIX
 #include <sys/mman.h>
@@ -40,23 +41,6 @@
 SPIO_BEGIN_NAMESPACE
 
 namespace detail {
-template <typename T>
-T round_up_power_of_two(T n)
-{
-    T p = 1;
-    while (p < n)
-        p *= 2;
-    return p;
-}
-#if SPIO_HAS_BUILTIN(__builtin_clz)
-inline uint32_t round_up_power_of_two(uint32_t n)
-{
-    Expects(n > 1);
-    Expects(n <= std::numeric_limits<uint32_t>::max() / 2 + 1);
-    return 1 << (32 - __builtin_clz(n - 1));
-}
-#endif
-
 #if SPIO_POSIX && SPIO_RING_USE_MMAP
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON

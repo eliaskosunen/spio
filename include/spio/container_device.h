@@ -88,7 +88,7 @@ public:
         if (m_it == m_buf->end()) {
             m_buf->reserve(m_buf->size() + s.size());
             append(s.begin(), s.end());
-            m_it = m_buf->end;
+            m_it = m_buf->end();
         }
         else {
             auto dist = std::distance(m_buf->begin(), m_it);

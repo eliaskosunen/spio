@@ -24,6 +24,7 @@
 #include "config.h"
 
 #include <memory>
+#include "third_party/gsl.h"
 
 SPIO_BEGIN_NAMESPACE
 
@@ -122,6 +123,25 @@ using detected_t = typename detail::detector<nonesuch, void, Op, Args...>::type;
 
 template <class Default, template <class...> class Op, class... Args>
 using detected_or = detail::detector<Default, void, Op, Args...>;
+
+namespace detail {
+template <typename T>
+T round_up_power_of_two(T n)
+{
+    T p = 1;
+    while (p < n)
+        p *= 2;
+    return p;
+}
+#if SPIO_HAS_BUILTIN(__builtin_clz)
+inline uint32_t round_up_power_of_two(uint32_t n)
+{
+    Expects(n > 1);
+    Expects(n <= std::numeric_limits<uint32_t>::max() / 2 + 1);
+    return 1 << (32 - __builtin_clz(n - 1));
+}
+#endif
+}  // namespace detail
 
 SPIO_END_NAMESPACE
 
