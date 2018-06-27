@@ -23,12 +23,6 @@
 
 #include "config.h"
 
-#if SPIO_GCC_COMPAT
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#endif
-
 #include "ring.h"
 #include "string_view.h"
 #include "util.h"
@@ -45,9 +39,5 @@
 #include "source.h"
 
 #include "stream_base.h"
-
-#if SPIO_GCC_COMPAT
-#pragma GCC diagnostic pop
-#endif
 
 #endif  // SPIO_SPIO_H

@@ -86,14 +86,15 @@ public:
         Expects(m_buf);
 
         if (m_it == m_buf->end()) {
-            m_buf->reserve(m_buf->size() + s.size());
+            m_buf->reserve(m_buf->size() + static_cast<std::size_t>(s.size()));
             append(s.begin(), s.end());
             m_it = m_buf->end();
         }
         else {
             auto dist = std::distance(m_buf->begin(), m_it);
-            if (s.size() > m_buf->size()) {
-                m_buf->reserve(m_buf->size() + s.size());
+            if (static_cast<std::size_t>(s.size()) > m_buf->size()) {
+                m_buf->reserve(m_buf->size() +
+                               static_cast<std::size_t>(s.size()));
                 m_buf->insert(m_buf->begin() + dist, s.begin(), s.end());
             }
             else {

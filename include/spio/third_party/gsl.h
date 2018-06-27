@@ -23,9 +23,18 @@
 
 #include "../config.h"
 
+#if SPIO_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
+#endif
+
 #if SPIO_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-template"
+#pragma clang diagnostic ignored "-Wsign-conversion"
 #endif
 
 #define gsl_CONFIG_SPAN_INDEX_TYPE std::ptrdiff_t
@@ -41,6 +50,10 @@ SPIO_END_NAMESPACE
 
 #if SPIO_CLANG
 #pragma clang diagnostic pop
+#endif
+
+#if SPIO_GCC
+#pragma GCC diagnostic pop
 #endif
 
 #endif  // SPIO_THIRD_PARTY_GSL_H

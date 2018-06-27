@@ -220,6 +220,17 @@
 #define SPIO_NOEXCEPT throw()
 #endif
 
+// Detect deduction guides
+#if (defined(__cpp_deduction_guides) && __cpp_deduction_guides >= 201703 &&   \
+     __cplusplus >= SPIO_STD_17) ||                                           \
+    ((SPIO_GCC >= SPIO_COMPILER(7, 0, 0) ||                                   \
+      SPIO_CLANG >= SPIO_COMPILER(5, 0, 0) && __cplusplus >= SPIO_STD_17)) || \
+    (SPIO_MSVC >= SPIO_COMPILER(19, 14, 0) && SPIO_MSVC_LANG >= SPIO_STD_17)
+#define SPIO_HAS_DEDUCTION_GUIDES 1
+#else
+#define SPIO_HAS_DEDUCTION_GUIDES 0
+#endif
+
 // Detect [[nodiscard]]
 #if (SPIO_HAS_CPP_ATTRIBUTE(nodiscard) && __cplusplus >= SPIO_STD_17) || \
     (SPIO_MSVC >= SPIO_COMPILER(19, 11, 0) &&                            \

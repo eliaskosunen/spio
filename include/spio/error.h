@@ -62,6 +62,10 @@ struct error_category : public std::error_category {
 
     std::string message(int ev) const override
     {
+#if SPIO_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch-default"  // this switch is exhaustive
+#endif
         switch (static_cast<error>(ev)) {
             case invalid_input:
                 return "Invalid input";
@@ -88,21 +92,24 @@ struct error_category : public std::error_category {
         }
         assert(false);
         std::terminate();
+#if SPIO_GCC
+#pragma GCC diagnostic pop
+#endif
     }
 };
 
 namespace detail {
-#ifdef __clang__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wexit-time-destructors"
+#if SPIO_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wexit-time-destructors"
 #endif
-    inline const error_category& get_error_category()
-    {
-        static error_category inst;
-        return inst;
-    }
-#ifdef __clang__
-#pragma GCC diagnostic pop
+inline const error_category& get_error_category()
+{
+    static error_category inst;
+    return inst;
+}
+#if SPIO_CLANG
+#pragma clang diagnostic pop
 #endif
 }  // namespace detail
 

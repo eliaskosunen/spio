@@ -23,6 +23,16 @@
 
 #include "../config.h"
 
+#if SPIO_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wswitch-enum"
+#pragma GCC diagnostic ignored "-Wswitch-default"
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
+
 #if SPIO_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdocumentation-unknown-command"
@@ -43,6 +53,10 @@ SPIO_END_NAMESPACE
 
 #if SPIO_CLANG
 #pragma clang diagnostic pop
+#endif
+
+#if SPIO_GCC
+#pragma GCC diagnostic pop
 #endif
 
 #endif  // SPIO_THIRD_PARTY_FMT_H

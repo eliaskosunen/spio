@@ -38,10 +38,13 @@ public:
 
     basic_result() = default;
     basic_result(success_type ok) : m_ok(std::move(ok)) {}
+#if !SPIO_HAS_DEDUCTION_GUIDES
+    // ambiguous if std::optional has deduction guides
     basic_result(success_type ok, error_type err)
         : m_ok(std::move(ok)), m_err(std::move(err))
     {
     }
+#endif
     basic_result(success_type ok, wrapped_error_type err)
         : m_ok(std::move(ok)), m_err(std::move(err))
     {

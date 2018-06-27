@@ -60,7 +60,7 @@ public:
 
     ~ring_base_posix() SPIO_NOEXCEPT
     {
-        ::munmap(m_ptr - m_size, m_size * 3);
+        ::munmap(m_ptr - m_size, static_cast<std::size_t>(m_size * 3));
     }
 
     nonstd::expected<void, failure> init(size_type size)
@@ -82,38 +82,41 @@ public:
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
         }
 
-        m_ptr =
-            static_cast<gsl::byte*>(::mmap(nullptr, m_size * 3, PROT_NONE,
-                                           MAP_ANONYMOUS | MAP_PRIVATE, -1, 0));
+        m_ptr = static_cast<gsl::byte*>(
+            ::mmap(nullptr, static_cast<std::size_t>(m_size * 3), PROT_NONE,
+                   MAP_ANONYMOUS | MAP_PRIVATE, -1, 0));
         if (m_ptr == MAP_FAILED) {
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
         }
 
-        auto addr = ::mmap(m_ptr, m_size, PROT_READ | PROT_WRITE,
-                           MAP_FIXED | MAP_SHARED, fd, 0);
+        auto addr =
+            ::mmap(m_ptr, static_cast<std::size_t>(m_size),
+                   PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED, fd, 0);
         if (addr != m_ptr) {
-            ::munmap(m_ptr, m_size * 2);
+            ::munmap(m_ptr, static_cast<std::size_t>(m_size * 2));
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
         }
 
-        auto addr2 = ::mmap(m_ptr + m_size, m_size, PROT_READ | PROT_WRITE,
-                            MAP_FIXED | MAP_SHARED, fd, 0);
+        auto addr2 =
+            ::mmap(m_ptr + m_size, static_cast<std::size_t>(m_size),
+                   PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED, fd, 0);
         if (addr2 != m_ptr + m_size) {
-            ::munmap(m_ptr, m_size * 2);
+            ::munmap(m_ptr, static_cast<std::size_t>(m_size * 2));
             /* ::munmap(addr, real_size); */
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
         }
 
-        auto addr3 = ::mmap(m_ptr + m_size * 2, m_size, PROT_READ | PROT_WRITE,
-                            MAP_FIXED | MAP_SHARED, fd, 0);
+        auto addr3 =
+            ::mmap(m_ptr + m_size * 2, static_cast<std::size_t>(m_size),
+                   PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED, fd, 0);
         if (addr3 != m_ptr + m_size * 2) {
-            ::munmap(m_ptr, m_size * 2);
+            ::munmap(m_ptr, static_cast<std::size_t>(m_size * 2));
             /* ::munmap(addr, real_size); */
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
         }
 
         if (::close(fd)) {
-            ::munmap(m_ptr, m_size * 2);
+            ::munmap(m_ptr, static_cast<std::size_t>(m_size * 2));
             /* ::munmap(addr, real_size); */
             /* ::munmap(addr2, real_size); */
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
@@ -364,7 +367,7 @@ public:
 
     nonstd::expected<void, failure> init(size_type size)
     {
-        m_buf = storage_type(new value_type[size]);
+        m_buf = storage_type(new value_type[static_cast<std::size_t>(size)]);
         m_size = size;
         return {};
     }
@@ -673,7 +676,8 @@ public:
 
     basic_ring(size_type n) : m_buf{}
     {
-        auto r = m_buf.init(n * sizeof(value_type));
+        auto r =
+            m_buf.init(n * static_cast<std::ptrdiff_t>(sizeof(value_type)));
         if (!r) {
             throw r.error();
         }
@@ -681,22 +685,27 @@ public:
 
     size_type write(gsl::span<const value_type> data)
     {
-        return m_buf.write(gsl::as_bytes(data)) / sizeof(value_type);
+        return m_buf.write(gsl::as_bytes(data)) /
+               static_cast<std::ptrdiff_t>(sizeof(value_type));
     }
     size_type write_tail(gsl::span<const value_type> data)
     {
-        return m_buf.write_tail(gsl::as_bytes(data)) / sizeof(value_type);
+        return m_buf.write_tail(gsl::as_bytes(data)) /
+               static_cast<std::ptrdiff_t>(sizeof(value_type));
     }
     size_type read(gsl::span<value_type> data)
     {
-        return m_buf.read(gsl::as_writeable_bytes(data)) / sizeof(value_type);
+        return m_buf.read(gsl::as_writeable_bytes(data)) /
+               static_cast<std::ptrdiff_t>(sizeof(value_type));
     }
 
     gsl::span<const value_type> peek(size_type n) const
     {
-        auto s = m_buf.peek(n * sizeof(value_type));
-        return gsl::make_span(reinterpret_cast<const value_type*>(s.data()),
-                              s.size() / sizeof(value_type));
+        auto s =
+            m_buf.peek(n * static_cast<std::ptrdiff_t>(sizeof(value_type)));
+        return gsl::make_span(
+            reinterpret_cast<const value_type*>(s.data()),
+            s.size() / static_cast<std::ptrdiff_t>(sizeof(value_type)));
     }
 
     void clear()
@@ -706,7 +715,7 @@ public:
 
     size_type size() const
     {
-        return m_buf.size() / sizeof(value_type);
+        return m_buf.size() / static_cast<size_type>(sizeof(value_type));
     }
     bool empty() const
     {
@@ -715,11 +724,11 @@ public:
 
     size_type in_use() const
     {
-        return m_buf.in_use() / sizeof(value_type);
+        return m_buf.in_use() / static_cast<size_type>(sizeof(value_type));
     }
     size_type free_space() const
     {
-        return m_buf.free_space() / sizeof(value_type);
+        return m_buf.free_space() / static_cast<size_type>(sizeof(value_type));
     }
 
     gsl::span<value_type> span()
@@ -746,7 +755,7 @@ public:
 
     basic_ring(size_type n) : base{}
     {
-        auto r = base::init(n * sizeof(value_type));
+        auto r = base::init(n * static_cast<size_type>(sizeof(value_type)));
         if (!r) {
             throw r.error();
         }

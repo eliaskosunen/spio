@@ -23,17 +23,16 @@
 
 #include "../config.h"
 
-#if SPIO_GCC_COMPAT
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wundef"
-#endif
-
 #if SPIO_GCC
+#pragma GCC diagnostic ignored "-Wundef"
 #pragma GCC diagnostic ignored "-Wparentheses"
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
 
 #if SPIO_CLANG
 #pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundef"
+#pragma clang diagnostic ignored "-Wsign-compare"
 #pragma clang diagnostic ignored "-Wdocumentation-unknown-command"
 #pragma clang diagnostic ignored "-Wold-style-cast"
 #pragma clang diagnostic ignored "-Wreserved-id-macro"
@@ -69,7 +68,7 @@ SPIO_END_NAMESPACE
 #pragma clang diagnostic pop
 #endif
 
-#if SPIO_GCC_COMPAT
+#if SPIO_GCC
 #pragma GCC diagnostic pop
 #endif
 

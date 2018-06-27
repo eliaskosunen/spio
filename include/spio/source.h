@@ -128,7 +128,7 @@ public:
     static SPIO_CONSTEXPR_DECL const size_type buffer_size = BUFSIZ * 2;
 
     basic_buffered_readable(readable_type&& r,
-                            size_type s = buffer_size,
+                            size_type s = size_type(buffer_size),
                             size_type rs = -1)
         : base(std::move(r)),
           m_buffer(detail::round_up_power_of_two(s)),
@@ -188,12 +188,15 @@ private:
     result read_into_buffer(size_type n, bool& eof)
     {
         Expects(n <= free_space());
-        auto has_read = 0;
+        size_type has_read = 0;
         for (auto s : m_buffer.direct_write(n)) {
             auto r = base::get().read(s, eof);
             has_read += r.value();
             if (r.has_error()) {
                 return {has_read, r.inspect_error()};
+            }
+            if (eof) {
+                break;
             }
         }
         m_buffer.move_head(-(n - has_read));

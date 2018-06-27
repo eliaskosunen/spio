@@ -23,8 +23,12 @@
 
 #include "../config.h"
 
-#if SPIO_CLANG
-#pragma clang diagnostic push
+#if SPIO_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wundef"
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Weffc++"
 #endif
 
 #include "nonstd/optional.hpp"
@@ -35,8 +39,8 @@ namespace nonstd = ::nonstd;
 
 SPIO_END_NAMESPACE
 
-#if SPIO_CLANG
-#pragma clang diagnostic pop
+#if SPIO_GCC
+#pragma GCC diagnostic pop
 #endif
 
 #endif  // SPIO_THIRD_PARTY_OPTIONAL_H

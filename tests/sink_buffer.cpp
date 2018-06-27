@@ -73,12 +73,14 @@ TEST_CASE("sink_buffer")
     {
         spio::basic_buffered_writable<spio::vector_sink> buf(
             std::move(sink), spio::buffer_mode::full);
-        std::vector<char> write(buf.size());
+        std::vector<char> write(static_cast<size_t>(buf.size()));
         fill_random(write.begin(), write.end());
 
         bool flush = false;
         auto ret = buf.write(
-            gsl::as_bytes(gsl::make_span(write.data(), write.size())), flush);
+            gsl::as_bytes(gsl::make_span(
+                write.data(), static_cast<std::ptrdiff_t>(write.size()))),
+            flush);
         CHECK(!flush);
         CHECK(ret.value() == write.size());
         CHECK(container.empty());
@@ -109,7 +111,8 @@ TEST_CASE("sink_buffer")
 
         bool flush = false;
         auto ret = buf.write(
-            gsl::as_bytes(gsl::make_span(write.data(), write.size() - 1)),
+            gsl::as_bytes(gsl::make_span(
+                write.data(), static_cast<std::ptrdiff_t>(write.size()) - 1)),
             flush);
         CHECK(!flush);
         CHECK(ret.value() == write.size() - 1);

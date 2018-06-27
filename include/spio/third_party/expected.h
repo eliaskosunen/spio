@@ -23,6 +23,11 @@
 
 #include "../config.h"
 
+#if SPIO_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Weffc++"
+#endif
+
 #if SPIO_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
@@ -40,6 +45,10 @@ SPIO_END_NAMESPACE
 
 #if SPIO_CLANG
 #pragma clang diagnostic pop
+#endif
+
+#if SPIO_GCC
+#pragma GCC diagnostic pop
 #endif
 
 #endif  // SPIO_THIRD_PARTY_EXPECTED_H

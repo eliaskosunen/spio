@@ -166,6 +166,8 @@ namespace nonstd {
 
 #if optional_CPP14_OR_GREATER
 # define optional_HAVE_CONSTEXPR_14  1
+#else
+# define optional_HAVE_CONSTEXPR_14  0
 #endif
 
 // Presence of C++17 language features:

@@ -26,14 +26,14 @@ TEST_CASE("source_buffer")
     std::vector<gsl::byte> container = [&]() {
         std::string str =
             "Hello world!\nHello another line!\nfoobar qwerty 1234567890!";
-        auto s =
-            gsl::as_writeable_bytes(gsl::make_span(&*str.begin(), str.size()));
+        auto s = gsl::as_writeable_bytes(gsl::make_span(
+            &*str.begin(), static_cast<std::ptrdiff_t>(str.size())));
         return std::vector<gsl::byte>(s.begin(), s.end());
     }();
     spio::vector_source source(container);
-    spio::basic_buffered_readable<spio::vector_source> buf(std::move(source),
-                                                           container.size());
-    const auto size = buf.size();
+    spio::basic_buffered_readable<spio::vector_source> buf(
+        std::move(source), static_cast<std::ptrdiff_t>(container.size()));
+    const std::ptrdiff_t size = buf.size();
 
     SUBCASE("preconditions and getters")
     {
@@ -66,13 +66,15 @@ TEST_CASE("source_buffer")
         CHECK(!ret.has_error());
         CHECK(read[0] == container[0]);
         CHECK(buf.in_use() == container.size() - 1);
-        CHECK(buf.free_space() == size - container.size() + 1);
+        CHECK(buf.free_space() ==
+              size - static_cast<std::ptrdiff_t>(container.size()) + 1);
 
         ret = buf.putback(gsl::make_span(read).first(1));
         CHECK(ret.value() == 1);
         CHECK(!ret.has_error());
         CHECK(buf.in_use() == container.size());
-        CHECK(buf.free_space() == size - container.size());
+        CHECK(buf.free_space() ==
+              size - static_cast<std::ptrdiff_t>(container.size()));
 
         ret = buf.read(gsl::make_span(read), eof);
         CHECK(!ret.has_error());

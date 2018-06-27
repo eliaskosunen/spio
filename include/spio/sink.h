@@ -122,7 +122,7 @@ public:
     basic_buffered_writable(writable_type&& w,
                             buffer_mode m,
                             size_type s = BUFSIZ)
-        : base(std::move(w)), m_mode(m), m_buf(_init_buffer(m, s))
+        : base(std::move(w)), m_buf(_init_buffer(m, s)), m_mode(m)
     {
     }
 
@@ -194,7 +194,7 @@ public:
 
     size_type size() const
     {
-        return m_buf.size();
+        return static_cast<size_type>(m_buf.size());
     }
     size_type in_use() const
     {
@@ -240,7 +240,7 @@ private:
     static buffer_type _init_buffer(buffer_mode m, size_type s)
     {
         if (_use_buffering(m)) {
-            return buffer_type(s);
+            return buffer_type(static_cast<std::size_t>(s));
         }
         return {};
     }

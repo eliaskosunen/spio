@@ -79,7 +79,7 @@ public:
         return b;
     }
 #endif
-    nonstd::expected<bool, failure> bread(gsl::byte& result)
+    nonstd::expected<bool, failure> bread(gsl::byte& r)
     {
         Expects(is_open());
 
@@ -87,7 +87,7 @@ public:
             return nonstd::make_unexpected(end_of_file);
         }
 
-        auto n = std::fread(std::addressof(result), 1, 1, m_handle);
+        auto n = std::fread(std::addressof(r), 1, 1, m_handle);
         if (SPIO_UNLIKELY(n == 0)) {
             if (SPIO_UNLIKELY(std::ferror(m_handle) != 0)) {
                 return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
@@ -110,7 +110,8 @@ public:
     {
         Expects(is_open());
 
-        auto b = std::fwrite(s.data(), 1, s.size_bytes(), m_handle);
+        auto b = static_cast<std::ptrdiff_t>(std::fwrite(
+            s.data(), 1, static_cast<std::size_t>(s.size_bytes()), m_handle));
         if (SPIO_UNLIKELY(b < s.size_bytes())) {
             if (SPIO_UNLIKELY(std::ferror(m_handle) != 0)) {
                 return make_result(b, SPIO_MAKE_ERRNO);
@@ -214,11 +215,11 @@ class stdio_source : private stdio_device {
 public:
     using stdio_device::stdio_device;
 
+    using stdio_device::bread;
     using stdio_device::close;
     using stdio_device::is_open;
     using stdio_device::open;
     using stdio_device::putback;
-    using stdio_device::bread;
     using stdio_device::seek;
 };
 

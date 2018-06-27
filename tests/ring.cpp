@@ -18,7 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#define SPIO_RING_USE_MMAP 1
 #include <spio/spio.h>
 #include "doctest.h"
 
@@ -42,7 +41,8 @@ TEST_CASE("ring")
     {
         spio::ring r(1024);
         char str[] = "Hello world!";
-        auto strspan = gsl::make_span(str, std::strlen(str));
+        auto strspan =
+            gsl::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1);
 
         CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
         CHECK(r.in_use() == strspan.size());
@@ -66,7 +66,8 @@ TEST_CASE("ring")
     {
         spio::ring r(1024);
         char str[] = "Hello world!";
-        auto strspan = gsl::make_span(str, std::strlen(str));
+        auto strspan =
+            gsl::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1);
 
         CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
         CHECK(r.in_use() == strspan.size());
@@ -76,9 +77,10 @@ TEST_CASE("ring")
         CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
         CHECK(r.in_use() == strspan.size() * 2);
 
-        std::string readbuf(strspan.size() * 2, '\0');
+        std::string readbuf(static_cast<std::size_t>(strspan.size() * 2), '\0');
         CHECK(r.read(gsl::as_writeable_bytes(gsl::make_span(
-                  &readbuf[0], readbuf.size()))) == readbuf.size());
+                  &readbuf[0], static_cast<std::ptrdiff_t>(readbuf.size())))) ==
+              readbuf.size());
         CHECK_EQ(std::strcmp(readbuf.data(), "Hello world!Hallo world!"), 0);
         CHECK(r.in_use() == 0);
         CHECK(r.empty());
@@ -88,7 +90,8 @@ TEST_CASE("ring")
     {
         spio::ring r(1024);
         char str[] = "Hello world!";
-        auto strspan = gsl::make_span(str, std::strlen(str));
+        auto strspan =
+            gsl::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1);
 
         CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
         CHECK(r.in_use() == strspan.size());
@@ -99,8 +102,10 @@ TEST_CASE("ring")
         CHECK(r.write_tail(gsl::as_bytes(tailspan)) == tailspan.size());
         CHECK(r.in_use() == strspan.size() + tailspan.size());
 
-        std::string readbuf(r.in_use(), '\0');
-        CHECK(r.read(gsl::as_writeable_bytes(gsl::make_span(&readbuf[0], readbuf.size()))) == readbuf.size());
+        std::string readbuf(static_cast<std::size_t>(r.in_use()), '\0');
+        CHECK(r.read(gsl::as_writeable_bytes(gsl::make_span(
+                  &readbuf[0], static_cast<std::ptrdiff_t>(readbuf.size())))) ==
+              readbuf.size());
         CHECK_EQ(std::strcmp(readbuf.data(), "1234Hello world!"), 0);
         CHECK(r.empty());
     }
@@ -109,8 +114,8 @@ TEST_CASE("ring")
     {
         spio::ring r(1024);
         char str[] = "Hello world";
-        auto strspan =
-            gsl::as_writeable_bytes(gsl::make_span(str, std::strlen(str)));
+        auto strspan = gsl::as_writeable_bytes(
+            gsl::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1));
 
         {
             auto it = strspan.begin();
