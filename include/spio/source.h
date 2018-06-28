@@ -188,14 +188,19 @@ private:
     result read_into_buffer(size_type n, bool& eof)
     {
         Expects(n <= free_space());
+
         size_type has_read = 0;
-        for (auto s : m_buffer.direct_write(n)) {
-            auto r = base::get().read(s, eof);
+        auto buffer = m_buffer.direct_write(n);
+        for (auto it = buffer.begin(); it != buffer.end(); ++it) {
+            auto r = base::get().read(*it, eof);
             has_read += r.value();
             if (r.has_error()) {
                 return {has_read, r.inspect_error()};
             }
             if (eof) {
+                if (it != buffer.end()) {
+                    ++it;  // can't use a ranged for because of this
+                }
                 break;
             }
         }

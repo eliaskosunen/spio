@@ -100,7 +100,7 @@ TEST_CASE("sink_buffer")
         CHECK(ret.value() == 1);
         CHECK(!ret.has_error());
         CHECK(container.size() == write.size() + 1);
-        CHECK(gsl::to_uchar(container.back()) == write.front());
+        CHECK(gsl::to_integer<char>(container.back()) == write.front());
     }
 
     SUBCASE("line buffering")

@@ -32,7 +32,7 @@ TEST_CASE("source_buffer")
     }();
     spio::vector_source source(container);
     spio::basic_buffered_readable<spio::vector_source> buf(
-        std::move(source), static_cast<std::ptrdiff_t>(container.size()));
+        std::move(source), static_cast<std::ptrdiff_t>(BUFSIZ) * 2);
     const std::ptrdiff_t size = buf.size();
 
     SUBCASE("preconditions and getters")
