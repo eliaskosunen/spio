@@ -88,8 +88,12 @@
 #define SPIO_GCC_COMPAT 0
 #endif
 
-#if defined(_WIN32) || defined(_WINDOWS)
-#define SPIO_WINDOWS 1
+#if defined(_WIN32) || defined(_WINDOWS) || defined(_WIN64)
+#ifdef _WIN64
+#define SPIO_WINDOWS 64
+#else
+#define SPIO_WINDOWS 32
+#endif // _WIN64
 #else
 #define SPIO_WINDOWS 0
 #endif
@@ -132,32 +136,27 @@
 
 #ifndef SPIO_BEGIN_NAMESPACE
 #define SPIO_INLINE_NAMESPACE_NAME v0
-#if SPIO_HAS_FEATURE(cxx_inline_namespaces) || \
-    SPIO_MSVC >= SPIO_COMPILER(19, 0, 0) ||    \
-    SPIO_INTEL >= SPIO_COMPILER(14, 0, 0)
-#define SPIO_INLINE_NAMESPACE inline namespace
+#define SPIO_BEGIN_NAMESPACE \
+    namespace spio {         \
+    inline namespace SPIO_INLINE_NAMESPACE_NAME {
 #define SPIO_END_NAMESPACE \
     }                      \
     }
-#else
-#define SPIO_INLINE_NAMESPACE namespace
-#define SPIO_END_NAMESPACE                      \
-    }                                           \
-    using namespace SPIO_INLINE_NAMESPACE_NAME; \
-    }
-#endif  // cxx_inline_namespaces
-#define SPIO_BEGIN_NAMESPACE                         \
-    namespace spio {                                 \
-    SPIO_INLINE_NAMESPACE SPIO_INLINE_NAMESPACE_NAME \
-    {
 #endif
 
 // Detect string_view
-#if defined(__cpp_lib_string_view) || (__has_include(<string_view>) && __cplusplus >= SPIO_STD_17) || \
+#if (defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201606) || \
+    (SPIO_HAS_INCLUDE(<string_view>) && __cplusplus >= SPIO_STD_17) ||     \
+    ((SPIO_GCC >= SPIO_COMPILER(7, 0, 0) ||                                \
+      SPIO_CLANG >= SPIO_COMPILER(4, 0, 0)) &&                             \
+     __cplusplus >= SPIO_STD_17) ||                                        \
     (SPIO_MSVC >= SPIO_COMPILER(19, 10, 0) && SPIO_MSVC_LANG >= SPIO_STD_17)
 #define SPIO_HAS_STD_STRING_VIEW 1
 #endif
-#if defined(__cpp_lib_experimental_string_view) || (__has_include(<experimental/string_view>) && __cplusplus >= SPIO_STD_14)
+#if (defined(__cpp_lib_experimental_string_view) &&    \
+     __cpp_lib_experimental_string_view >= 201411) ||  \
+    (SPIO_HAS_INCLUDE(<experimental / string_view>) && \
+     __cplusplus >= SPIO_STD_14)
 #define SPIO_HAS_EXP_STRING_VIEW 1
 #endif
 
@@ -170,54 +169,33 @@
 
 // Detect constexpr
 #if defined(__cpp_constexpr)
-#if __cpp_constexpr >= 201603
-#define SPIO_HAS_CONSTEXPR 3  // constexpr lambdas
-#elif __cpp_constexpr >= 201304
-#define SPIO_HAS_CONSTEXPR 2  // relaxed constexpr
-#elif __cpp_constexpr >= 200704
-#define SPIO_HAS_CONSTEXPR 1  // basic C++11 constexpr
+#if __cpp_constexpr >= 201304
+#define SPIO_HAS_RELAXED_CONSTEXPR 1
 #else
-#define SPIO_HAS_CONSTEXPR 0
+#define SPIO_HAS_RELAXED_CONSTEXPR 0
 #endif
 #endif
 
-#ifndef SPIO_HAS_CONSTEXPR
-#if __has_feature(cxx_relaxed_constexpr) ||     \
+#ifndef SPIO_HAS_RELAXED_CONSTEXPR
+#if SPIO_HAS_FEATURE(cxx_relaxed_constexpr) ||  \
     SPIO_MSVC >= SPIO_COMPILER(19, 10, 0) ||    \
     ((SPIO_GCC >= SPIO_COMPILER(6, 0, 0) ||     \
       SPIO_INTEL >= SPIO_COMPILER(17, 0, 0)) && \
      __cplusplus >= SPIO_STD_14)
-#define SPIO_HAS_CONSTEXPR 2  // relaxed
-#elif __has_feature(cxx_constexpr) || SPIO_MSVC >= SPIO_COMPILER(19, 0, 0) || \
-    SPIO_GCC >= SPIO_COMPILER(4, 6, 0) ||                                     \
-    SPIO_INTEL >= SPIO_COMPILER(14, 0, 0)
-#define SPIO_HAS_CONSTEXPR 1
+#define SPIO_HAS_RELAXED_CONSTEXPR 1
 #else
-#define SPIO_HAS_CONSTEXPR 0
+#define SPIO_HAS_RELAXED_CONSTEXPR 0
 #endif
 #endif
 
-#if SPIO_HAS_CONSTEXPR >= 2
+#if SPIO_HAS_RELAXED_CONSTEXPR
 #define SPIO_CONSTEXPR constexpr
 #define SPIO_CONSTEXPR_STRICT constexpr
 #define SPIO_CONSTEXPR_DECL constexpr
-#elif SPIO_HAS_CONSTEXPR
+#else
 #define SPIO_CONSTEXPR inline
 #define SPIO_CONSTEXPR_STRICT constexpr
 #define SPIO_CONSTEXPR_DECL
-#else
-#define SPIO_CONSTEXPR inline
-#define SPIO_CONSTEXPR_STRICT inline
-#define SPIO_CONSTEXPR_DECL
-#endif
-
-// Detect noexcept
-#if SPIO_HAS_FEATURE(cxx_noexcept) || SPIO_MSVC >= SPIO_COMPILER(19, 0, 0) || \
-    SPIO_GCC >= SPIO_COMPILER(4, 6, 0) ||                                     \
-    SPIO_INTEL >= SPIO_COMPILER(14, 0, 0)
-#define SPIO_NOEXCEPT noexcept
-#else
-#define SPIO_NOEXCEPT throw()
 #endif
 
 // Detect deduction guides
@@ -356,10 +334,36 @@
 // clang 2.9
 // msvc 16.0 (2010)
 // intel 12.1
+//
+// reference qualifiers:
+// gcc 4.8.1
+// clang 2.9
+// msvc 19.0 (2015)
+// intel 14.0
+//
+// noexcept:
+// gcc 4.6
+// clang 3.0
+// msvc 19.0 (2015)
+// intel 14.0
+//
+// inline namespaces:
+// gcc 4.4
+// clang 2.9
+// msvc 19.0 (2015)
+// intel 14.0
+//
+// total:
+// gcc 4.8.1
+// clang 3.0
+// msvc 19.0 (2015)
+// intel 14.0
 
 #ifndef SPIO_USE_AFIO
 #define SPIO_USE_AFIO \
     __cplusplus >= SPIO_STD_17 || SPIO_MSVC_LANG >= SPIO_STD_17
 #endif
+
+#define SPIO_PTRDIFF_IS_INT SPIO_WINDOWS == 32
 
 #endif  // SPIO_CONFIG_H

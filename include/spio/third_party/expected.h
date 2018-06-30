@@ -25,14 +25,17 @@
 
 #if SPIO_GCC
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wshadow"
 #endif
 
 #if SPIO_CLANG
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wmissing-variable-declarations"
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
+
+#if SPIO_CLANG >= SPIO_COMPILER(5, 0, 0)
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 #endif
 
 #include "nonstd/expected.hpp"

@@ -32,13 +32,15 @@ using streamoff = std::ptrdiff_t;
 
 class streampos {
 public:
-    SPIO_CONSTEXPR_STRICT streampos(int n) SPIO_NOEXCEPT
+#if !SPIO_PTRDIFF_IS_INT
+    SPIO_CONSTEXPR_STRICT streampos(int n) noexcept
         : streampos(static_cast<streamoff>(n))
     {
     }
-    SPIO_CONSTEXPR_STRICT streampos(streamoff n) SPIO_NOEXCEPT : m_pos(n) {}
+#endif
+    SPIO_CONSTEXPR_STRICT streampos(streamoff n) noexcept : m_pos(n) {}
 
-    SPIO_CONSTEXPR_STRICT operator streamoff() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT operator streamoff() const noexcept
     {
         return m_pos;
     }

@@ -29,12 +29,16 @@
 #pragma GCC diagnostic ignored "-Weffc++"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wstrict-overflow"
 #endif
 
 #if SPIO_CLANG
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-template"
 #pragma clang diagnostic ignored "-Wsign-conversion"
+
+#if SPIO_CLANG >= SPIO_COMPILER(5, 0, 0)
+#pragma clang diagnostic ignored "-Wunused-template"
+#endif
 #endif
 
 #define gsl_CONFIG_SPAN_INDEX_TYPE std::ptrdiff_t

@@ -18,35 +18,5 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef SPIO_SPIO_H
-#define SPIO_SPIO_H
-
-#include "config.h"
-
-#if SPIO_GCC
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Weffc++"
-#endif
-
-#include "ring.h"
-#include "string_view.h"
-#include "util.h"
-
-#include "container_device.h"
-#include "memory_device.h"
-#include "stdio_device.h"
-
-#if SPIO_USE_AFIO
-#include "afio_device.h"
-#endif
-
-#include "sink.h"
-#include "source.h"
-
-#include "stream_base.h"
-
-#if SPIO_GCC
-#pragma GCC diagnostic pop
-#endif
-
-#endif  // SPIO_SPIO_H
+#include <spio/spio.h>
+#include "doctest.h"

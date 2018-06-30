@@ -60,7 +60,7 @@ public:
 
     static SPIO_CONSTEXPR_DECL const size_type npos = size_type(-1);
 
-    SPIO_CONSTEXPR_STRICT basic_string_view() SPIO_NOEXCEPT = default;
+    SPIO_CONSTEXPR_STRICT basic_string_view() noexcept = default;
     SPIO_CONSTEXPR_STRICT basic_string_view(const_pointer s, size_type c)
         : m_data(s, c)
     {
@@ -70,36 +70,36 @@ public:
     {
     }
 
-    SPIO_CONSTEXPR_STRICT const_iterator begin() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const_iterator begin() const noexcept
     {
         return cbegin();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator cbegin() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const_iterator cbegin() const noexcept
     {
         return m_data.cbegin();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator end() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const_iterator end() const noexcept
     {
         return cend();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator cend() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const_iterator cend() const noexcept
     {
         return m_data.cend();
     }
 
-    SPIO_CONSTEXPR_STRICT const_iterator rbegin() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const_iterator rbegin() const noexcept
     {
         return crbegin();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator crbegin() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const_iterator crbegin() const noexcept
     {
         return m_data.crbegin();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator rend() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const_iterator rend() const noexcept
     {
         return crend();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator crend() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const_iterator crend() const noexcept
     {
         return m_data.crend();
     }
@@ -121,24 +121,24 @@ public:
     {
         return operator[](size() - 1);
     }
-    SPIO_CONSTEXPR_STRICT const_pointer data() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const_pointer data() const noexcept
     {
         return m_data.data();
     }
 
-    SPIO_CONSTEXPR_STRICT size_type size() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT size_type size() const noexcept
     {
         return m_data.size_us();
     }
-    SPIO_CONSTEXPR_STRICT size_type length() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT size_type length() const noexcept
     {
         return size();
     }
-    SPIO_CONSTEXPR_STRICT size_type max_size() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT size_type max_size() const noexcept
     {
         return std::numeric_limits<size_type>::max() - 1;
     }
-    SPIO_NODISCARD SPIO_CONSTEXPR_STRICT bool empty() const SPIO_NOEXCEPT
+    SPIO_NODISCARD SPIO_CONSTEXPR_STRICT bool empty() const noexcept
     {
         return size() == 0;
     }
@@ -152,7 +152,7 @@ public:
         m_data = m_data.first(size() - n);
     }
 
-    SPIO_CONSTEXPR void swap(basic_string_view& v) SPIO_NOEXCEPT
+    SPIO_CONSTEXPR void swap(basic_string_view& v) noexcept
     {
         using std::swap;
         swap(m_data, v.m_data);
@@ -171,7 +171,7 @@ public:
         return m_data.subspan(pos, n);
     }
 
-    int compare(basic_string_view v) const SPIO_NOEXCEPT
+    int compare(basic_string_view v) const noexcept
     {
         auto n = std::min(size(), v.size());
         auto cmp = Traits::compare(data(), v.data(), n);

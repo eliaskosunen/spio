@@ -12,6 +12,12 @@ if(SPIO_USE_AFIO)
     target_compile_definitions(spio INTERFACE SPIO_USE_AFIO=1)
     target_link_libraries(spio INTERFACE afio_sl)
 else()
-    target_compile_features(spio INTERFACE cxx_defaulted_functions)
+    target_compile_features(spio INTERFACE
+        cxx_defaulted_functions
+        cxx_noexcept
+        cxx_variadic_templates
+        cxx_nullptr
+        cxx_reference_qualified_functions
+        cxx_inline_namespaces)
     target_compile_definitions(spio INTERFACE SPIO_USE_AFIO=0)
 endif()

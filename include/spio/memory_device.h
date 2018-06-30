@@ -61,7 +61,7 @@ public:
     }
 
 private:
-    span_type m_buf{nullptr};
+    span_type m_buf{};
 };
 }  // namespace detail
 

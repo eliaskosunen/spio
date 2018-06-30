@@ -55,17 +55,17 @@ public:
 
     ring_base_posix(const ring_base_posix&) = delete;
     ring_base_posix& operator=(const ring_base_posix&) = delete;
-    ring_base_posix(ring_base_posix&&) SPIO_NOEXCEPT = default;
-    ring_base_posix& operator=(ring_base_posix&&) SPIO_NOEXCEPT = default;
+    ring_base_posix(ring_base_posix&&) noexcept = default;
+    ring_base_posix& operator=(ring_base_posix&&) noexcept = default;
 
-    ~ring_base_posix() SPIO_NOEXCEPT
+    ~ring_base_posix() noexcept
     {
         ::munmap(m_ptr - m_size, static_cast<std::size_t>(m_size * 3));
     }
 
-    nonstd::expected<void, failure> init(size_type size)
+    nonstd::expected<void, failure> init(size_type s)
     {
-        auto rounded_size = round_up_power_of_two(size);
+        auto rounded_size = round_up_power_of_two(s);
         auto page_size = ::sysconf(_SC_PAGESIZE);
         m_size = (rounded_size + page_size - 1) & ~(page_size - 1);
 
@@ -126,43 +126,41 @@ public:
         return {};
     }
 
-    size_type write(gsl::span<const gsl::byte> data)
+    size_type write(gsl::span<const gsl::byte> s)
     {
-        auto written =
-            std::min(static_cast<size_type>(data.size()), free_space());
-        std::copy(data.begin(), data.begin() + written, m_ptr + m_head);
+        auto written = std::min(static_cast<size_type>(s.size()), free_space());
+        std::copy(s.begin(), s.begin() + written, m_ptr + m_head);
         m_head += written;
         if (m_size < m_head) {
             m_head &= (m_size - 1);
         }
-        if (data.size() != 0) {
+        if (s.size() != 0) {
             m_empty = false;
         }
         return written;
     }
-    size_type write_tail(gsl::span<const gsl::byte> data)
+    size_type write_tail(gsl::span<const gsl::byte> s)
     {
-        auto written =
-            std::min(static_cast<size_type>(data.size()), free_space());
-        std::reverse_copy(data.rbegin(), data.rbegin() + written,
+        auto written = std::min(static_cast<size_type>(s.size()), free_space());
+        std::reverse_copy(s.rbegin(), s.rbegin() + written,
                           m_ptr + m_tail - written);
         m_tail -= written;
         if (m_tail < 0) {
             m_tail &= (m_size - 1);
         }
-        if (data.size() != 0) {
+        if (s.size() != 0) {
             m_empty = true;
         }
         return written;
     }
-    size_type read(gsl::span<gsl::byte> data)
+    size_type read(gsl::span<gsl::byte> s)
     {
         if (empty()) {
             return 0;
         }
 
-        auto n = std::min(static_cast<size_type>(data.size()), in_use());
-        std::copy(m_ptr + m_tail, m_ptr + m_tail + n, data.begin());
+        auto n = std::min(static_cast<size_type>(s.size()), in_use());
+        std::copy(m_ptr + m_tail, m_ptr + m_tail + n, s.begin());
         m_tail += n;
         if (m_size < m_tail) {
             m_tail &= (m_size - 1);
@@ -365,19 +363,19 @@ public:
 
     ring_base_std() = default;
 
-    nonstd::expected<void, failure> init(size_type size)
+    nonstd::expected<void, failure> init(size_type s)
     {
-        m_buf = storage_type(new value_type[static_cast<std::size_t>(size)]);
-        m_size = size;
+        m_buf = storage_type(new value_type[static_cast<std::size_t>(s)]);
+        m_size = s;
         return {};
     }
 
-    size_type write(gsl::span<const gsl::byte> data)
+    size_type write(gsl::span<const gsl::byte> s)
     {
         if (m_head < m_tail) {
             auto n =
-                std::min(static_cast<size_type>(data.size()), m_tail - m_head);
-            std::copy(data.begin(), data.begin() + n, m_buf.get() + m_head);
+                std::min(static_cast<size_type>(s.size()), m_tail - m_head);
+            std::copy(s.begin(), s.begin() + n, m_buf.get() + m_head);
             m_head += n;
             if (m_head == m_size) {
                 m_head = 0;
@@ -385,38 +383,38 @@ public:
             return n;
         }
         auto space_end = m_size - m_head;
-        auto n = std::min(space_end, static_cast<size_type>(data.size()));
-        std::copy(data.begin(), data.begin() + n, m_buf.get() + m_head);
-        data = data.subspan(n);
+        auto n = std::min(space_end, static_cast<size_type>(s.size()));
+        std::copy(s.begin(), s.begin() + n, m_buf.get() + m_head);
+        s = s.subspan(n);
         m_head += n;
         if (m_head == m_size) {
             m_head = 0;
         }
-        if (data.size() == 0) {
+        if (s.size() == 0) {
             return n;
         }
 
-        return write(data);
+        return write(s);
     }
-    size_type write_tail(gsl::span<const gsl::byte> data)
+    size_type write_tail(gsl::span<const gsl::byte> s)
     {
-        auto written = std::min(static_cast<size_type>(data.size()), m_tail);
-        std::reverse_copy(data.rbegin(), data.rbegin() + written,
+        auto written = std::min(static_cast<size_type>(s.size()), m_tail);
+        std::reverse_copy(s.rbegin(), s.rbegin() + written,
                           m_buf.get() + m_tail - written);
         m_tail -= written;
-        data = data.first(data.size() - written);
-        if (data.size() == 0) {
+        s = s.first(s.size() - written);
+        if (s.size() == 0) {
             return written;
         }
 
         auto space =
-            std::min(static_cast<size_type>(data.size()), m_size - m_head - 1);
-        std::reverse_copy(data.rbegin(), data.rbegin() + space,
+            std::min(static_cast<size_type>(s.size()), m_size - m_head - 1);
+        std::reverse_copy(s.rbegin(), s.rbegin() + space,
                           m_buf.get() + m_size - space);
         m_tail = m_size - space;
         return written + space;
     }
-    size_type read(gsl::span<gsl::byte> data)
+    size_type read(gsl::span<gsl::byte> s)
     {
         if (empty()) {
             return 0;
@@ -424,9 +422,9 @@ public:
 
         if (m_tail < m_head) {
             auto n =
-                std::min(static_cast<size_type>(data.size()), m_head - m_tail);
+                std::min(static_cast<size_type>(s.size()), m_head - m_tail);
             std::copy(m_buf.get() + m_tail, m_buf.get() + m_tail + n,
-                      data.begin());
+                      s.begin());
             m_tail += n;
             if (m_tail == m_size) {
                 m_tail = 0;
@@ -438,18 +436,18 @@ public:
         }
 
         auto space_end = m_size - m_tail;
-        auto n = std::min(space_end, static_cast<size_type>(data.size()));
-        std::copy(m_buf.get() + m_tail, m_buf.get() + m_tail + n, data.begin());
-        data = data.subspan(n);
+        auto n = std::min(space_end, static_cast<size_type>(s.size()));
+        std::copy(m_buf.get() + m_tail, m_buf.get() + m_tail + n, s.begin());
+        s = s.subspan(n);
         m_tail += n;
         if (m_tail == m_size) {
             m_tail = 0;
         }
-        if (data.size() == 0) {
+        if (s.size() == 0) {
             return n;
         }
 
-        return read(data) + n;
+        return read(s) + n;
     }
 
     gsl::span<const value_type> peek(size_type n) const

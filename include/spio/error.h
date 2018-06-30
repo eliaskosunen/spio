@@ -24,6 +24,7 @@
 #include "config.h"
 
 #include <cerrno>
+#include <cstdio>
 #include <exception>
 #include <stdexcept>
 #include <string>

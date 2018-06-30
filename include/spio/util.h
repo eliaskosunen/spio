@@ -32,7 +32,7 @@ SPIO_BEGIN_NAMESPACE
 #define SPIO_STRINGIZE(x) SPIO_STRINGIZE_DETAIL(x)
 #define SPIO_LINE SPIO_STRINGIZE(__LINE__)
 
-#define SPIO_UNUSED(x) (static_cast<void>(sizeof(x)))
+#define SPIO_UNUSED(x) (static_cast<void>(x))
 
 #if SPIO_HAS_MAKE_UNIQUE
 using std::make_unique;

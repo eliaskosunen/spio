@@ -77,27 +77,27 @@ public:
 
     basic_buffered_source_base(source_type&& s) : m_source(std::move(s)) {}
 
-    source_type& get() SPIO_NOEXCEPT
+    source_type& get() noexcept
     {
         return m_source;
     }
-    const source_type& get() const SPIO_NOEXCEPT
+    const source_type& get() const noexcept
     {
         return m_source;
     }
-    source_type& operator*() SPIO_NOEXCEPT
+    source_type& operator*() noexcept
     {
         return get();
     }
-    const source_type& operator*() const SPIO_NOEXCEPT
+    const source_type& operator*() const noexcept
     {
         return get();
     }
-    source_type* operator->() SPIO_NOEXCEPT
+    source_type* operator->() noexcept
     {
         return std::addressof(get());
     }
-    const source_type* operator->() const SPIO_NOEXCEPT
+    const source_type* operator->() const noexcept
     {
         return std::addressof(get());
     }
@@ -109,7 +109,7 @@ private:
 template <typename T>
 T round_up_multiple_of_two(T n, T multiple)
 {
-    Expects(multiple);
+    Expects(multiple > 0);
     Expects((multiple & (multiple - 1)) == 0);
     return (n + multiple - 1) & -multiple;
 }
@@ -173,7 +173,7 @@ public:
     result putback(gsl::span<gsl::byte> s)
     {
         if (s.size() > free_space()) {
-            return {m_buffer.write_tail(s), out_of_memory};
+            return make_result(m_buffer.write_tail(s), out_of_memory);
         }
         return m_buffer.write_tail(s);
     }

@@ -65,10 +65,10 @@ public:
 
     result read(gsl::span<gsl::byte> s, bool& eof)
     {
-        Expects(m_buf);
+        Expects(m_buf != nullptr);
 
         if (m_it == m_buf->end() && s.size() != 0) {
-            return {0, end_of_file};
+            return make_result(0, end_of_file);
         }
         auto dist = std::distance(m_it, m_buf->end());
         auto n = std::min(dist, static_cast<decltype(dist)>(s.size()));
@@ -83,7 +83,7 @@ public:
     auto write(gsl::span<const gsl::byte> s) ->
         typename std::enable_if<!C, result>::type
     {
-        Expects(m_buf);
+        Expects(m_buf != nullptr);
 
         if (m_it == m_buf->end()) {
             m_buf->reserve(m_buf->size() + static_cast<std::size_t>(s.size()));

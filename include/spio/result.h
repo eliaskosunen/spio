@@ -63,11 +63,11 @@ public:
     {
         return m_err.has_value();
     }
-    wrapped_error_type& inspect_error() SPIO_NOEXCEPT
+    wrapped_error_type& inspect_error() noexcept
     {
         return m_err;
     }
-    const wrapped_error_type& inspect_error() const SPIO_NOEXCEPT
+    const wrapped_error_type& inspect_error() const noexcept
     {
         return m_err;
     }

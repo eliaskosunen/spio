@@ -79,27 +79,27 @@ public:
 
     basic_buffered_sink_base(sink_type&& s) : m_source(std::move(s)) {}
 
-    sink_type& get() SPIO_NOEXCEPT
+    sink_type& get() noexcept
     {
         return m_source;
     }
-    const sink_type& get() const SPIO_NOEXCEPT
+    const sink_type& get() const noexcept
     {
         return m_source;
     }
-    sink_type& operator*() SPIO_NOEXCEPT
+    sink_type& operator*() noexcept
     {
         return get();
     }
-    const sink_type& operator*() const SPIO_NOEXCEPT
+    const sink_type& operator*() const noexcept
     {
         return get();
     }
-    sink_type* operator->() SPIO_NOEXCEPT
+    sink_type* operator->() noexcept
     {
         return std::addressof(get());
     }
-    const sink_type* operator->() const SPIO_NOEXCEPT
+    const sink_type* operator->() const noexcept
     {
         return std::addressof(get());
     }

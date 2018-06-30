@@ -32,20 +32,20 @@ class stream_base {
 public:
     stream_base(const stream_base&) = delete;
     stream_base& operator=(const stream_base&) = delete;
-    stream_base(stream_base&&) SPIO_NOEXCEPT = default;
-    stream_base& operator=(stream_base&&) SPIO_NOEXCEPT = default;
+    stream_base(stream_base&&) = default;
+    stream_base& operator=(stream_base&&) = default;
 
-    virtual ~stream_base() SPIO_NOEXCEPT = default;
+    virtual ~stream_base() = default;
 
-    bool bad() const SPIO_NOEXCEPT
+    bool bad() const noexcept
     {
         return m_flags[0];
     }
-    virtual explicit operator bool() const SPIO_NOEXCEPT
+    virtual operator bool() const noexcept
     {
         return bad();
     }
-    bool operator!() const SPIO_NOEXCEPT
+    bool operator!() const noexcept
     {
         return !(operator bool());
     }

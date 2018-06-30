@@ -40,20 +40,20 @@ public:
 
     nonstd::expected<std::FILE*, failure> open(std::FILE* h)
     {
-        Expects(h);
+        Expects(is_open());
         m_handle = h;
         return h;
     }
-    SPIO_CONSTEXPR_STRICT bool is_open() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT bool is_open() const noexcept
     {
         return m_handle != nullptr;
     }
 
-    SPIO_CONSTEXPR std::FILE* handle() SPIO_NOEXCEPT
+    SPIO_CONSTEXPR std::FILE* handle() noexcept
     {
         return m_handle;
     }
-    SPIO_CONSTEXPR_STRICT const std::FILE* handle() const SPIO_NOEXCEPT
+    SPIO_CONSTEXPR_STRICT const std::FILE* handle() const noexcept
     {
         return m_handle;
     }
@@ -152,7 +152,7 @@ public:
             }
             return SEEK_END;
         }();
-        if (std::fseek(m_handle, off, origin) != 0) {
+        if (std::fseek(m_handle, static_cast<long>(off), origin) != 0) {
             return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
         }
 
@@ -176,9 +176,9 @@ public:
 
     stdio_device(const stdio_device&) = delete;
     stdio_device& operator=(const stdio_device&) = delete;
-    stdio_device(stdio_device&&) SPIO_NOEXCEPT = default;
-    stdio_device& operator=(stdio_device&&) SPIO_NOEXCEPT = default;
-    ~stdio_device() SPIO_NOEXCEPT
+    stdio_device(stdio_device&&) noexcept = default;
+    stdio_device& operator=(stdio_device&&) noexcept = default;
+    ~stdio_device() noexcept
     {
         if (is_open()) {
             close();

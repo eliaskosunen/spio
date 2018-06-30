@@ -26,11 +26,11 @@
 #if SPIO_GCC
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
-#pragma GCC diagnostic ignored "-Weffc++"
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 #pragma GCC diagnostic ignored "-Wswitch-default"
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
 #endif
 
 #if SPIO_CLANG
@@ -43,6 +43,11 @@
 #pragma clang diagnostic ignored "-Wunused-member-function"
 #endif
 
+#if SPIO_MSVC
+#pragma warning(push)
+#pragma warning(disable: 4127)
+#endif
+
 #include "fmt/format.h"
 
 SPIO_BEGIN_NAMESPACE
@@ -50,6 +55,10 @@ SPIO_BEGIN_NAMESPACE
 namespace fmt = ::fmt;
 
 SPIO_END_NAMESPACE
+
+#if SPIO_MSVC
+#pragma warning(pop)
+#endif
 
 #if SPIO_CLANG
 #pragma clang diagnostic pop
