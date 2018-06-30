@@ -7,5 +7,6 @@ message(STATUS "Use afio: ${SPIO_USE_AFIO}")
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+enable_testing()
 add_subdirectory(include/spio)
 add_subdirectory(tests)

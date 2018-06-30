@@ -19,4 +19,5 @@
 // SOFTWARE.
 
 #include <spio/spio.h>
-#include "doctest.h"
+
+int main() {}

@@ -1,5 +1,3 @@
-enable_testing()
-
 add_library(test-main INTERFACE)
 target_link_libraries(test-main INTERFACE spio)
 target_include_directories(test-main SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/doctest)
