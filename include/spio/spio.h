@@ -43,6 +43,7 @@
 #include "sink.h"
 #include "source.h"
 
+#include "filter.h"
 #include "stream_base.h"
 
 #if SPIO_GCC

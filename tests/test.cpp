@@ -56,7 +56,7 @@ int main()
 
         auto file_write =
             spio::afio::file({}, "file.txt",
-                             spio::afio::file_handle::mode::append)
+                             spio::afio::file_handle::mode::write)
                 .value();
         auto write = spio::afio_file_device(file_write);
 
