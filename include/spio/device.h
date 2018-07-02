@@ -97,6 +97,12 @@ template <typename Device>
 using is_writable = is_detected<writable_op, Device>;
 
 template <typename Device>
+using byte_writable_op =
+    decltype(std::declval<Device>().put(std::declval<gsl::byte>()));
+template <typename Device>
+using is_byte_writable = is_detected<byte_writable_op, Device>;
+
+template <typename Device>
 using vector_writable_op = decltype(std::declval<Device>().vwrite(
     std::declval<gsl::span<gsl::span<const gsl::byte>>>(),
     std::declval<streampos>()));
@@ -122,7 +128,7 @@ using is_readable = is_detected<readable_op, Device>;
 
 template <typename Device>
 using byte_readable_op =
-    decltype(std::declval<Device>().bread(std::declval<gsl::byte&>()));
+    decltype(std::declval<Device>().get(std::declval<gsl::byte&>()));
 template <typename Device>
 using is_byte_readable = is_detected<byte_readable_op, Device>;
 

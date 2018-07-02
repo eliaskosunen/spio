@@ -79,7 +79,7 @@ public:
         return b;
     }
 #endif
-    nonstd::expected<bool, failure> bread(gsl::byte& r)
+    nonstd::expected<bool, failure> get(gsl::byte& r)
     {
         Expects(is_open());
 
@@ -215,7 +215,7 @@ class stdio_source : private stdio_device {
 public:
     using stdio_device::stdio_device;
 
-    using stdio_device::bread;
+    using stdio_device::get;
     using stdio_device::close;
     using stdio_device::is_open;
     using stdio_device::open;
