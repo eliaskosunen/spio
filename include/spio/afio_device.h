@@ -67,7 +67,17 @@ public:
         return m_handle;
     }
 
-    nonstd::expected<afio::span<afio_buffer_type>, failure> read_afio(
+    bool is_open() const
+    {
+        return m_handle != nullptr;
+    }
+    void close()
+    {
+        Expects(m_handle);
+        m_handle->close();
+    }
+
+    nonstd::expected<afio::span<afio_buffer_type>, failure> afio_read(
         afio_request_type reqs)
     {
         Expects(m_handle);
@@ -94,7 +104,7 @@ public:
             });
 
         auto ret =
-            read_afio({list, static_cast<typename Handle::extent_type>(pos)});
+            afio_read({list, static_cast<typename Handle::extent_type>(pos)});
         if (!ret) {
             return nonstd::make_unexpected(ret.error());
         }
@@ -106,7 +116,7 @@ public:
         return bufs;
     }
 
-    nonstd::expected<afio::span<const_afio_buffer_type>, failure> write_afio(
+    nonstd::expected<afio::span<const_afio_buffer_type>, failure> afio_write(
         typename Handle::template io_request<afio::span<const_afio_buffer_type>>
             reqs)
     {
@@ -135,7 +145,7 @@ public:
                        });
 
         auto ret =
-            write_afio({list, static_cast<typename Handle::extent_type>(pos)});
+            afio_write({list, static_cast<typename Handle::extent_type>(pos)});
         if (!ret) {
             return nonstd::make_unexpected(ret.error());
         }
@@ -165,6 +175,27 @@ class afio_file_device : public detail::afio_device<afio::file_handle> {
 
 public:
     using base::base;
+
+    nonstd::expected<streamsize, failure> truncate(streamsize newsize)
+    {
+        Expects(is_open());
+
+        auto ret = handle()->truncate(
+            static_cast<afio::file_handle::extent_type>(newsize));
+        if (ret.has_error()) {
+            return nonstd::make_unexpected(make_error_code(ret.error()));
+        }
+        return static_cast<streamsize>(ret.value());
+    }
+
+    nonstd::expected<streamsize, failure> extent() const
+    {
+        auto ret = handle()->maximum_extent();
+        if (ret.has_error()) {
+            return nonstd::make_unexpected(make_error_code(ret.error()));
+        }
+        return static_cast<streamsize>(ret.value());
+    }
 };
 
 SPIO_END_NAMESPACE

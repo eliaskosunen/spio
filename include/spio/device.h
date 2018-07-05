@@ -97,6 +97,13 @@ template <typename Device>
 using is_writable = is_detected<writable_op, Device>;
 
 template <typename Device>
+using ra_writable_op = decltype(
+    std::declval<Device>().write(std::declval<gsl::span<const gsl::byte>>(),
+                                 std::declval<streampos>()));
+template <typename Device>
+using is_random_access_writable = is_detected<ra_writable_op, Device>;
+
+template <typename Device>
 using byte_writable_op =
     decltype(std::declval<Device>().put(std::declval<gsl::byte>()));
 template <typename Device>
@@ -116,6 +123,8 @@ using is_direct_writable = is_detected<direct_writable_op, Device>;
 
 template <typename Device>
 using is_sink = disjunction<is_writable<Device>,
+                            is_random_access_writable<Device>,
+                            is_byte_writable<Device>,
                             is_vector_writable<Device>,
                             is_direct_writable<Device>>;
 
@@ -125,6 +134,14 @@ using readable_op =
                                          std::declval<bool&>()));
 template <typename Device>
 using is_readable = is_detected<readable_op, Device>;
+
+template <typename Device>
+using ra_readable_op =
+    decltype(std::declval<Device>().read(std::declval<gsl::span<gsl::byte>>(),
+                                         std::declval<streampos>(),
+                                         std::declval<bool&>()));
+template <typename Device>
+using is_random_access_readable = is_detected<ra_readable_op, Device>;
 
 template <typename Device>
 using byte_readable_op =
@@ -146,13 +163,10 @@ using is_direct_readable = is_detected<direct_readable_op, Device>;
 
 template <typename Device>
 using is_source = disjunction<is_readable<Device>,
+                              is_random_access_readable<Device>,
                               is_byte_readable<Device>,
                               is_vector_readable<Device>,
                               is_direct_readable<Device>>;
-
-template <typename Device>
-struct is_device : disjunction<is_sink<Device>, is_source<Device>>::type {
-};
 
 SPIO_END_NAMESPACE
 

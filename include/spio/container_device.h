@@ -63,9 +63,19 @@ public:
         return m_buf;
     }
 
-    result read(gsl::span<gsl::byte> s, bool& eof)
+    bool is_open() const
+    {
+        return m_buf != nullptr;
+    }
+    void close()
     {
         Expects(m_buf != nullptr);
+        m_buf = nullptr;
+    }
+
+    result read(gsl::span<gsl::byte> s, bool& eof)
+    {
+        Expects(is_open());
 
         if (m_it == m_buf->end() && s.size() != 0) {
             return make_result(0, end_of_file);
@@ -79,11 +89,27 @@ public:
         }
         return n;
     }
+    result read_at(gsl::span<gsl::byte> s, streampos pos)
+    {
+        Expects(is_open());
+
+        if (pos >= m_buf->size()) {
+            return make_result(0, out_of_range);
+        }
+        auto dist = m_buf->size() - pos;
+        auto n = std::min(dist, static_cast<decltype(dist)>(s.size()));
+        std::copy_n(m_buf->begin() + pos, n, s.begin());
+        if (n < s.size()) {
+            return make_result(n, out_of_range);
+        }
+        return n;
+    }
+
     template <bool C = IsConst>
     auto write(gsl::span<const gsl::byte> s) ->
         typename std::enable_if<!C, result>::type
     {
-        Expects(m_buf != nullptr);
+        Expects(is_open());
 
         if (m_it == m_buf->end()) {
             m_buf->reserve(m_buf->size() + static_cast<std::size_t>(s.size()));
@@ -104,6 +130,17 @@ public:
         }
         return s.size();
     }
+    template <bool C = IsConst>
+    auto write_at(gsl::span<const gsl::byte> s, streampos pos)
+    {
+        Expects(is_open());
+
+        if (pos >= m_buf->size()) {
+            return make_result(0, out_of_range);
+        }
+        m_buf->insert(m_buf->begin() + pos, s.begin(), s.end());
+        return s.size();
+    }
 
     nonstd::expected<streampos, failure> seek(streampos pos,
                                               inout which = in | out)
@@ -116,7 +153,7 @@ public:
                                               inout which = in | out)
     {
         SPIO_UNUSED(which);
-        Expects(m_buf);
+        Expects(is_open());
 
         if (dir == seekdir::beg) {
             if (m_buf->size() < off || off < 0) {
@@ -160,6 +197,18 @@ public:
         return std::distance(m_buf->begin(), m_it);
     }
 
+    nonstd::expected<streamsize, failure> extent() const
+    {
+        Expects(is_open());
+        return static_cast<streamsize>(m_buf->size());
+    }
+    nonstd::expected<streamsize, failure> truncate(streamsize newsize)
+    {
+        Expects(is_open());
+        m_buf->truncate(newsize);
+        return extent();
+    }
+
 private:
     template <typename Iterator, typename C = container_type, typename = void>
     struct has_append : std::false_type {
@@ -198,7 +247,9 @@ class basic_container_device
 
 public:
     using base::base;
+    using base::close;
     using base::container;
+    using base::is_open;
     using base::read;
     using base::write;
 };
@@ -210,7 +261,9 @@ class basic_container_sink
 
 public:
     using base::base;
+    using base::close;
     using base::container;
+    using base::is_open;
     using base::write;
 };
 
@@ -221,7 +274,9 @@ class basic_container_source
 
 public:
     using base::base;
+    using base::close;
     using base::container;
+    using base::is_open;
     using base::read;
 };
 

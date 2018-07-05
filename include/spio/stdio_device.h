@@ -33,20 +33,19 @@
 
 SPIO_BEGIN_NAMESPACE
 
-class stdio_handle_device {
+class stdio_device {
 public:
-    SPIO_CONSTEXPR_STRICT stdio_handle_device() = default;
-    SPIO_CONSTEXPR_STRICT stdio_handle_device(std::FILE* h) : m_handle(h) {}
+    SPIO_CONSTEXPR_STRICT stdio_device() = default;
+    SPIO_CONSTEXPR_STRICT stdio_device(std::FILE* h) : m_handle(h) {}
 
-    nonstd::expected<std::FILE*, failure> open(std::FILE* h)
-    {
-        Expects(is_open());
-        m_handle = h;
-        return h;
-    }
     SPIO_CONSTEXPR_STRICT bool is_open() const noexcept
     {
         return m_handle != nullptr;
+    }
+    SPIO_CONSTEXPR_STRICT void close()
+    {
+        Expects(is_open());
+        m_handle = nullptr;
     }
 
     SPIO_CONSTEXPR std::FILE* handle() noexcept
@@ -58,27 +57,6 @@ public:
         return m_handle;
     }
 
-#if 0
-    result read(gsl::span<gsl::byte> s, bool& eof)
-    {
-        Expects(is_open());
-
-        if (std::feof(m_handle) != 0 && s.size() != 0) {
-            return {0, end_of_file};
-        }
-
-        auto b = std::fread(s.data(), 1, s.size_bytes(), m_handle);
-        if (SPIO_UNLIKELY(b < s.size_bytes())) {
-            if (SPIO_UNLIKELY(std::ferror(m_handle) != 0)) {
-                return make_result(b, SPIO_MAKE_ERRNO);
-            }
-            if (std::feof(m_handle) != 0) {
-                eof = true;
-            }
-        }
-        return b;
-    }
-#endif
     nonstd::expected<bool, failure> get(gsl::byte& r)
     {
         Expects(is_open());
@@ -167,58 +145,16 @@ protected:
     std::FILE* m_handle{nullptr};
 };
 
-static_assert(is_sink<stdio_handle_device>::value, "");
-static_assert(is_source<stdio_handle_device>::value, "");
-
-class stdio_device : public stdio_handle_device {
-public:
-    stdio_device() = default;
-
-    stdio_device(const stdio_device&) = delete;
-    stdio_device& operator=(const stdio_device&) = delete;
-    stdio_device(stdio_device&&) noexcept = default;
-    stdio_device& operator=(stdio_device&&) noexcept = default;
-    ~stdio_device() noexcept
-    {
-        if (is_open()) {
-            close();
-        }
-    }
-
-    nonstd::expected<std::FILE*, failure> open(const char* path,
-                                               const char* flags)
-    {
-        Expects(!is_open());
-
-        auto h = std::fopen(path, flags);
-        if (!h) {
-            return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
-        }
-        if (!std::strchr(flags, 'r')) {
-            if (std::setvbuf(h, nullptr, _IONBF, 0) != 0) {
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
-            }
-        }
-        m_handle = h;
-        return m_handle;
-    }
-
-    void close()
-    {
-        Expects(is_open());
-        std::fclose(m_handle);
-        m_handle = nullptr;
-    }
-};
+static_assert(is_sink<stdio_device>::value, "");
+static_assert(is_source<stdio_device>::value, "");
 
 class stdio_source : private stdio_device {
 public:
     using stdio_device::stdio_device;
 
-    using stdio_device::get;
     using stdio_device::close;
+    using stdio_device::get;
     using stdio_device::is_open;
-    using stdio_device::open;
     using stdio_device::putback;
     using stdio_device::seek;
 };
@@ -231,7 +167,6 @@ public:
 
     using stdio_device::close;
     using stdio_device::is_open;
-    using stdio_device::open;
     using stdio_device::seek;
     using stdio_device::sync;
     using stdio_device::write;

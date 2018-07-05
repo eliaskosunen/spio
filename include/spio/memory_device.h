@@ -49,14 +49,25 @@ public:
     SPIO_CONSTEXPR_STRICT memory_device_impl() = default;
     SPIO_CONSTEXPR_STRICT memory_device_impl(span_type s) : m_buf(s) {}
 
+    bool is_open() const
+    {
+        return m_buf.data() != nullptr;
+    }
+    void close()
+    {
+        m_buf = span_type{};
+    }
+
     template <bool C = IsConst>
     auto output() -> typename std::enable_if<!C, gsl::span<gsl::byte>>::type
     {
+        Expects(is_open());
         return gsl::as_writeable_bytes(m_buf);
     }
 
     gsl::span<const gsl::byte> input() const
     {
+        Expects(is_open());
         return gsl::as_bytes(m_buf);
     }
 
@@ -70,7 +81,9 @@ class memory_device : private detail::memory_device_impl<false> {
 
 public:
     using base::base;
+    using base::close;
     using base::input;
+    using base::is_open;
     using base::output;
 };
 
@@ -79,6 +92,8 @@ class memory_sink : private detail::memory_device_impl<false> {
 
 public:
     using base::base;
+    using base::close;
+    using base::is_open;
     using base::output;
 };
 
@@ -87,7 +102,9 @@ class memory_source : private detail::memory_device_impl<true> {
 
 public:
     using base::base;
+    using base::close;
     using base::input;
+    using base::is_open;
 };
 
 SPIO_END_NAMESPACE
