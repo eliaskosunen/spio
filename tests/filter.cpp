@@ -22,17 +22,34 @@
 #include "doctest.h"
 
 struct nullify_sink_filter : spio::sink_filter {
-    spio::result write(buffer_type& data, size_type n, sink_type& sink) override
+    spio::result write(buffer_type& data) override
     {
-        std::fill_n(data.begin(), n, gsl::to_byte(0));
-        return sink(data, n);
+        std::fill(data.begin(), data.end(), gsl::to_byte(0));
+        return static_cast<size_type>(data.size());
+    }
+};
+
+struct nullify_source_filter : spio::source_filter {
+    spio::result read(buffer_type& data,
+                      spio::final_source_filter& source,
+                      bool& eof) override
+    {
+        SPIO_UNUSED(source);
+        SPIO_UNUSED(eof);
+        std::fill(data.begin(), data.end(), gsl::to_byte(0));
+        return static_cast<size_type>(data.size());
     }
 };
 
 TEST_CASE("sink_filter")
 {
     spio::sink_filter_chain chain;
+    CHECK(chain.size() == 0);
+    CHECK(chain.empty());
+
     chain.push<spio::null_sink_filter>();
+    CHECK(chain.size() == 1);
+    CHECK(!chain.empty());
 
     auto str = "Hello world!";
     auto len = std::strlen(str);
@@ -40,21 +57,16 @@ TEST_CASE("sink_filter")
         reinterpret_cast<const gsl::byte*>(str),
         reinterpret_cast<const gsl::byte*>(str) + len);
 
-    auto fn = spio::sink_filter_chain::sink_type(
-        [](spio::sink_filter_chain::buffer_type& buf,
-           spio::sink_filter_chain::size_type n) {
-            SPIO_UNUSED(buf);
-            return n;
-        });
-
     CHECK_EQ(std::strcmp(str, reinterpret_cast<char*>(buffer.data())), 0);
-    auto r = chain.write(buffer, static_cast<std::ptrdiff_t>(len), fn);
+    auto r = chain.write(buffer);
     CHECK(r.value() == len);
     CHECK(!r.has_error());
     CHECK_EQ(std::strcmp(str, reinterpret_cast<char*>(buffer.data())), 0);
 
     chain.push<nullify_sink_filter>();
-    r = chain.write(buffer, static_cast<std::ptrdiff_t>(len), fn);
+    CHECK(chain.size() == 2);
+
+    r = chain.write(buffer);
     CHECK(r.value() == len);
     CHECK(!r.has_error());
     CHECK(std::strlen(reinterpret_cast<char*>(buffer.data())) == 0);
@@ -66,7 +78,12 @@ TEST_CASE("sink_filter")
 TEST_CASE("source_filter")
 {
     spio::source_filter_chain chain;
+    CHECK(chain.size() == 0);
+    CHECK(chain.empty());
+
     chain.push<spio::null_source_filter>();
+    CHECK(chain.size() == 1);
+    CHECK(!chain.empty());
 
     auto str = "Hello world!";
     auto len = std::strlen(str);
@@ -76,53 +93,35 @@ TEST_CASE("source_filter")
     spio::vector_source source(buffer);
 
     std::vector<gsl::byte> dest(len);
-    auto fn = spio::source_filter_chain::source_type(
-        [&source](spio::source_filter_chain::buffer_type& buf,
-                  spio::sink_filter_chain::size_type n, bool& eof) {
-            return source.read(gsl::make_span(buf.data(), n), eof);
-        });
-    chain.read(dest, dest.size(), fn);
+    auto more = spio::readable_final_source_filter<spio::vector_source>(source);
+
+    bool eof = false;
+    source.read(gsl::as_writeable_bytes(gsl::make_span(
+                    dest.data(), static_cast<std::ptrdiff_t>(dest.size()))),
+                eof);
+    CHECK(eof);
+
+    auto r = chain.read(dest, more, eof);
+    CHECK(r.value() == len);
+    CHECK(dest.size() == len);
+    CHECK(eof);
+    CHECK(!r.has_error());
 
     CHECK(buffer.size() == dest.size());
     CHECK_EQ(std::memcmp(buffer.data(), dest.data(), dest.size()), 0);
+
+    chain.push<nullify_source_filter>();
+    CHECK(chain.size() == 2);
+
+    r = chain.read(dest, more, eof);
+    CHECK(r.value() == len);
+    CHECK(!r.has_error());
+
+    CHECK(std::strlen(reinterpret_cast<char*>(dest.data())) == 0);
+    size_t i = 0;
+    for (auto& b : dest) {
+        CHECK(b == gsl::to_byte(0));
+        CHECK(buffer[i] != b);
+        ++i;
+    }
 }
-
-#if 0
-struct nullify_sink_filter : spio::sink_filter {
-    using size_type = sink_filter::size_type;
-
-    virtual spio::result write(gsl::span<const gsl::byte> input,
-                               gsl::span<gsl::byte> output) override
-    {
-        std::fill(output.begin(), output.end(), gsl::to_byte(0));
-        return input.size();
-    }
-};
-
-TEST_CASE("sink_filter")
-{
-    spio::sink_filter_chain chain;
-    chain.filters().push_back(spio::make_unique<spio::null_sink_filter>());
-
-    auto str = "Hello world!";
-    auto len = std::strlen(str);
-    std::vector<gsl::byte> buffer(
-        reinterpret_cast<const gsl::byte*>(str),
-        reinterpret_cast<const gsl::byte*>(str) + len);
-
-    for (auto f : chain.iterable<std::vector<gsl::byte>>()) {
-        f = buffer;
-        CHECK(f.get_result().value() == len);
-        CHECK(!f.get_result().has_error());
-    }
-    CHECK_EQ(std::strcmp(str, reinterpret_cast<char*>(buffer.data())), 0);
-
-    chain.filters().push_back(spio::make_unique<nullify_sink_filter>());
-    for (auto f : chain.iterable<std::vector<gsl::byte>>()) {
-        f = buffer;
-        CHECK(f.get_result().value() == len);
-        CHECK(!f.get_result().has_error());
-    }
-    CHECK(std::strlen(reinterpret_cast<char*>(buffer.data())) == 0);
-}
-#endif
