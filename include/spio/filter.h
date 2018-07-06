@@ -44,22 +44,22 @@ protected:
     filter_base() = default;
 };
 
-struct sink_filter : filter_base {
+struct output_filter : filter_base {
     virtual result write(buffer_type& data) = 0;
 };
-struct byte_sink_filter : filter_base {
+struct byte_output_filter : filter_base {
     using sink_type = std::function<result(gsl::byte)>;
 
     virtual result put(gsl::byte data) = 0;
 };
 
-struct null_sink_filter : sink_filter {
+struct null_output_filter : output_filter {
     result write(buffer_type& data) override
     {
         return static_cast<size_type>(data.size());
     }
 };
-struct null_byte_sink_filter : byte_sink_filter {
+struct null_byte_output_filter : byte_output_filter {
     result put(gsl::byte data) override
     {
         SPIO_UNUSED(data);
@@ -67,29 +67,27 @@ struct null_byte_sink_filter : byte_sink_filter {
     }
 };
 
-struct final_source_filter : filter_base {
+struct source_filter : filter_base {
     virtual result read(gsl::span<gsl::byte> data, bool& eof) = 0;
 };
-struct source_filter : filter_base {
+struct input_filter : filter_base {
     virtual result read(buffer_type& data,
-                        final_source_filter& source,
+                        source_filter& source,
                         bool& eof) = 0;
 };
-struct byte_source_filter : filter_base {
+struct byte_input_filter : filter_base {
     virtual result get(gsl::byte& data) = 0;
 };
 
-struct null_source_filter : source_filter {
-    result read(buffer_type& data,
-                final_source_filter& source,
-                bool& eof) override
+struct null_input_filter : input_filter {
+    result read(buffer_type& data, source_filter& source, bool& eof) override
     {
         SPIO_UNUSED(source);
         SPIO_UNUSED(eof);
         return static_cast<size_type>(data.size());
     }
 };
-struct null_byte_source_fitler : byte_source_filter {
+struct null_byte_input_filter : byte_input_filter {
     result get(gsl::byte& data) override
     {
         SPIO_UNUSED(data);
@@ -98,14 +96,11 @@ struct null_byte_source_fitler : byte_source_filter {
 };
 
 template <typename Readable>
-class readable_final_source_filter : public final_source_filter {
+class readable_source_filter : public source_filter {
 public:
     using readable_type = Readable;
 
-    readable_final_source_filter(readable_type& r)
-        : final_source_filter(), m_readable(r)
-    {
-    }
+    readable_source_filter(readable_type& r) : source_filter(), m_readable(r) {}
 
     result read(gsl::span<gsl::byte> data, bool& eof) override
     {
@@ -172,7 +167,7 @@ private:
     filter_list m_list;
 };
 
-class sink_filter_chain : public basic_chain_base<sink_filter> {
+class sink_filter_chain : public basic_chain_base<output_filter> {
 public:
     result write(buffer_type& buf)
     {
@@ -186,7 +181,7 @@ public:
         return static_cast<size_type>(buf.size());
     }
 };
-class byte_sink_filter_chain : public basic_chain_base<byte_sink_filter> {
+class byte_sink_filter_chain : public basic_chain_base<byte_output_filter> {
 public:
     result put(gsl::byte b)
     {
@@ -200,9 +195,9 @@ public:
     }
 };
 
-class source_filter_chain : public basic_chain_base<source_filter> {
+class source_filter_chain : public basic_chain_base<input_filter> {
 public:
-    result read(buffer_type& buf, final_source_filter& source, bool& eof)
+    result read(buffer_type& buf, source_filter& source, bool& eof)
     {
         for (auto& f : filters()) {
             auto r = f->read(buf, source, eof);
@@ -214,7 +209,7 @@ public:
         return static_cast<size_type>(buf.size());
     }
 };
-class byte_source_filter_chain : public basic_chain_base<byte_source_filter> {
+class byte_source_filter_chain : public basic_chain_base<byte_input_filter> {
 public:
     result get(gsl::byte& b)
     {

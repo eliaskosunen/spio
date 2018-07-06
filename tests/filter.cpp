@@ -21,7 +21,7 @@
 #include <spio/spio.h>
 #include "doctest.h"
 
-struct nullify_sink_filter : spio::sink_filter {
+struct nullify_output_filter : spio::output_filter {
     spio::result write(buffer_type& data) override
     {
         std::fill(data.begin(), data.end(), gsl::to_byte(0));
@@ -29,9 +29,9 @@ struct nullify_sink_filter : spio::sink_filter {
     }
 };
 
-struct nullify_source_filter : spio::source_filter {
+struct nullify_input_filter : spio::input_filter {
     spio::result read(buffer_type& data,
-                      spio::final_source_filter& source,
+                      spio::source_filter& source,
                       bool& eof) override
     {
         SPIO_UNUSED(source);
@@ -47,7 +47,7 @@ TEST_CASE("sink_filter")
     CHECK(chain.size() == 0);
     CHECK(chain.empty());
 
-    chain.push<spio::null_sink_filter>();
+    chain.push<spio::null_output_filter>();
     CHECK(chain.size() == 1);
     CHECK(!chain.empty());
 
@@ -63,7 +63,7 @@ TEST_CASE("sink_filter")
     CHECK(!r.has_error());
     CHECK_EQ(std::strcmp(str, reinterpret_cast<char*>(buffer.data())), 0);
 
-    chain.push<nullify_sink_filter>();
+    chain.push<nullify_output_filter>();
     CHECK(chain.size() == 2);
 
     r = chain.write(buffer);
@@ -81,7 +81,7 @@ TEST_CASE("source_filter")
     CHECK(chain.size() == 0);
     CHECK(chain.empty());
 
-    chain.push<spio::null_source_filter>();
+    chain.push<spio::null_input_filter>();
     CHECK(chain.size() == 1);
     CHECK(!chain.empty());
 
@@ -93,7 +93,7 @@ TEST_CASE("source_filter")
     spio::vector_source source(buffer);
 
     std::vector<gsl::byte> dest(len);
-    auto more = spio::readable_final_source_filter<spio::vector_source>(source);
+    auto more = spio::readable_source_filter<spio::vector_source>(source);
 
     bool eof = false;
     source.read(gsl::as_writeable_bytes(gsl::make_span(
@@ -110,7 +110,7 @@ TEST_CASE("source_filter")
     CHECK(buffer.size() == dest.size());
     CHECK_EQ(std::memcmp(buffer.data(), dest.data(), dest.size()), 0);
 
-    chain.push<nullify_source_filter>();
+    chain.push<nullify_input_filter>();
     CHECK(chain.size() == 2);
 
     r = chain.read(dest, more, eof);

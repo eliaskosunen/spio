@@ -75,7 +75,7 @@ matrix:
         addons:
             apt:
                 update: true
-                packages: ["clang", "g++-8"]
+                packages: ["clang", "g++-7"]
                 sources: ["llvm-toolchain-trusty", "ubuntu-toolchain-r-test"]
       # clang++ 6
       - env: COMPILER=clang++-6.0 STANDARD=17
