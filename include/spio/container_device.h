@@ -131,7 +131,8 @@ public:
         return s.size();
     }
     template <bool C = IsConst>
-    auto write_at(gsl::span<const gsl::byte> s, streampos pos)
+    auto write_at(gsl::span<const gsl::byte> s, streampos pos) ->
+        typename std::enable_if<!C, result>::type
     {
         Expects(is_open());
 

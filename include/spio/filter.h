@@ -33,7 +33,15 @@ struct filter_base {
     using size_type = std::ptrdiff_t;
     using buffer_type = std::vector<gsl::byte>;
 
+    filter_base(const filter_base&) = default;
+    filter_base& operator=(const filter_base&) = default;
+    filter_base(filter_base&&) noexcept = default;
+    filter_base& operator=(filter_base&&) noexcept = default;
+
     virtual ~filter_base() noexcept = default;
+
+protected:
+    filter_base() = default;
 };
 
 struct sink_filter : filter_base {
@@ -94,7 +102,10 @@ class readable_final_source_filter : public final_source_filter {
 public:
     using readable_type = Readable;
 
-    readable_final_source_filter(readable_type& r) : final_source_filter(), m_readable(r) {}
+    readable_final_source_filter(readable_type& r)
+        : final_source_filter(), m_readable(r)
+    {
+    }
 
     result read(gsl::span<gsl::byte> data, bool& eof) override
     {

@@ -42,7 +42,7 @@ public:
     {
         return m_handle != nullptr;
     }
-    SPIO_CONSTEXPR_STRICT void close()
+    SPIO_CONSTEXPR void close()
     {
         Expects(is_open());
         m_handle = nullptr;
