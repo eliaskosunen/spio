@@ -168,6 +168,44 @@ using is_source = disjunction<is_readable<Device>,
                               is_vector_readable<Device>,
                               is_direct_readable<Device>>;
 
+template <typename Device>
+using syncable_op = decltype(std::declval<Device>().sync());
+template <typename Device>
+using is_syncable = is_detected<syncable_op, Device>;
+
+template <typename Device>
+using relative_seekable_op =
+    decltype(std::declval<Device>().seek(std::declval<streampos>(),
+                                         std::declval<inout>()));
+template <typename Device>
+using absolute_seekable_op =
+    decltype(std::declval<Device>().seek(std::declval<streampos>(),
+                                         std::declval<seekdir>(),
+                                         std::declval<inout>()));
+template <typename Device>
+using is_seekable = conjunction<is_detected<relative_seekable_op, Device>,
+                                is_detected<absolute_seekable_op, Device>>;
+
+template <typename Device>
+using sized_op = decltype(std::declval<Device>().extent());
+template <typename Device>
+using is_sized = is_detected<sized_op, Device>;
+
+template <typename Device>
+using truncatable_op =
+    decltype(std::declval<Device>().truncate(std::declval<streampos>()));
+template <typename Device>
+using is_truncatable = is_detected<truncatable_op, Device>;
+
+template <typename Device>
+using closable_op = decltype(std::declval<Device>().close());
+template <typename Device>
+using is_open_op = decltype(std::declval<Device>().is_open());
+template <typename Device>
+using is_device = conjunction<is_detected<closable_op, Device>,
+                              is_detected<is_open_op, Device>,
+                              disjunction<is_sink<Device>, is_source<Device>>>;
+
 SPIO_END_NAMESPACE
 
 #endif  // SPIO_DEVICE_H
