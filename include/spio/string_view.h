@@ -32,7 +32,8 @@
 #include "third_party/gsl.h"
 #endif
 
-namespace spio {
+SPIO_BEGIN_NAMESPACE
+
 #if SPIO_HAS_STD_STRING_VIEW
 template <typename CharT, typename Traits = std::char_traits<CharT>>
 using basic_string_view = std::basic_string_view<CharT, Traits>;
@@ -66,7 +67,7 @@ public:
     {
     }
     SPIO_CONSTEXPR_STRICT basic_string_view(const_pointer s)
-        : m_data(s, Traits::length(s))
+        : m_data(s, static_cast<std::ptrdiff_t>(Traits::length(s)))
     {
     }
 
@@ -128,7 +129,7 @@ public:
 
     SPIO_CONSTEXPR_STRICT size_type size() const noexcept
     {
-        return m_data.size_us();
+        return static_cast<size_type>(m_data.size());
     }
     SPIO_CONSTEXPR_STRICT size_type length() const noexcept
     {
@@ -221,6 +222,7 @@ using string_view = basic_string_view<char>;
 using wstring_view = basic_string_view<wchar_t>;
 using u16string_view = basic_string_view<char>;
 using u32wstring_view = basic_string_view<wchar_t>;
-}  // namespace spio
+
+SPIO_END_NAMESPACE
 
 #endif  // SPIO_STRING_VIEW_H

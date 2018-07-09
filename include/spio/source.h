@@ -70,49 +70,49 @@ vread_all(gsl::span<typename VectorReadable::buffer_type> bufs,
 }
 
 namespace detail {
-template <typename Source>
-class basic_buffered_source_base {
-public:
-    using source_type = Source;
+    template <typename Source>
+    class basic_buffered_source_base {
+    public:
+        using source_type = Source;
 
-    basic_buffered_source_base(source_type&& s) : m_source(std::move(s)) {}
+        basic_buffered_source_base(source_type* s) : m_source(s) {}
 
-    source_type& get() noexcept
-    {
-        return m_source;
-    }
-    const source_type& get() const noexcept
-    {
-        return m_source;
-    }
-    source_type& operator*() noexcept
-    {
-        return get();
-    }
-    const source_type& operator*() const noexcept
-    {
-        return get();
-    }
-    source_type* operator->() noexcept
-    {
-        return std::addressof(get());
-    }
-    const source_type* operator->() const noexcept
-    {
-        return std::addressof(get());
-    }
+        source_type& get() noexcept
+        {
+            return *m_source;
+        }
+        const source_type& get() const noexcept
+        {
+            return *m_source;
+        }
+        source_type& operator*() noexcept
+        {
+            return get();
+        }
+        const source_type& operator*() const noexcept
+        {
+            return get();
+        }
+        source_type* operator->() noexcept
+        {
+            return m_source;
+        }
+        const source_type* operator->() const noexcept
+        {
+            return m_source;
+        }
 
-private:
-    source_type m_source;
-};
+    private:
+        source_type* m_source;
+    };
 
-template <typename T>
-T round_up_multiple_of_two(T n, T multiple)
-{
-    Expects(multiple > 0);
-    Expects((multiple & (multiple - 1)) == 0);
-    return (n + multiple - 1) & -multiple;
-}
+    template <typename T>
+    T round_up_multiple_of_two(T n, T multiple)
+    {
+        Expects(multiple > 0);
+        Expects((multiple & (multiple - 1)) == 0);
+        return (n + multiple - 1) & -multiple;
+    }
 }  // namespace detail
 
 template <typename Readable>
@@ -127,10 +127,10 @@ public:
 
     static SPIO_CONSTEXPR_DECL const size_type buffer_size = BUFSIZ * 2;
 
-    basic_buffered_readable(readable_type&& r,
+    basic_buffered_readable(readable_type& r,
                             size_type s = size_type(buffer_size),
                             size_type rs = -1)
-        : base(std::move(r)),
+        : base(std::addressof(r)),
           m_buffer(detail::round_up_power_of_two(s)),
           m_read_size(rs)
     {

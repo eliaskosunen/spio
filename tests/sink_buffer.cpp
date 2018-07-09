@@ -29,7 +29,7 @@ TEST_CASE("sink_buffer")
     SUBCASE("construction and getters: full")
     {
         spio::basic_buffered_writable<spio::vector_sink> buf(
-            std::move(sink), spio::buffer_mode::full);
+            sink, spio::buffer_mode::full);
         CHECK(buf.size() == BUFSIZ);
         CHECK(buf.free_space() == buf.size());
         CHECK(buf.empty());
@@ -40,7 +40,7 @@ TEST_CASE("sink_buffer")
     SUBCASE("construction and getters: line")
     {
         spio::basic_buffered_writable<spio::vector_sink> buf(
-            std::move(sink), spio::buffer_mode::line);
+            sink, spio::buffer_mode::line);
         CHECK(buf.size() == BUFSIZ);
         CHECK(buf.free_space() == buf.size());
         CHECK(buf.empty());
@@ -51,7 +51,7 @@ TEST_CASE("sink_buffer")
     SUBCASE("construction and getters: none")
     {
         spio::basic_buffered_writable<spio::vector_sink> buf(
-            std::move(sink), spio::buffer_mode::none);
+            sink, spio::buffer_mode::none);
         CHECK(buf.size() == 0);
         CHECK(buf.free_space() == buf.size());
         CHECK(buf.empty());
@@ -61,7 +61,7 @@ TEST_CASE("sink_buffer")
     SUBCASE("construction and getters: external")
     {
         spio::basic_buffered_writable<spio::vector_sink> buf(
-            std::move(sink), spio::buffer_mode::external);
+            sink, spio::buffer_mode::external);
         CHECK(buf.size() == 0);
         CHECK(buf.free_space() == buf.size());
         CHECK(buf.empty());
@@ -72,7 +72,7 @@ TEST_CASE("sink_buffer")
     SUBCASE("full buffering")
     {
         spio::basic_buffered_writable<spio::vector_sink> buf(
-            std::move(sink), spio::buffer_mode::full);
+            sink, spio::buffer_mode::full);
         std::vector<char> write(static_cast<size_t>(buf.size()));
         fill_random(write.begin(), write.end());
 
@@ -106,7 +106,7 @@ TEST_CASE("sink_buffer")
     SUBCASE("line buffering")
     {
         spio::basic_buffered_writable<spio::vector_sink> buf(
-            std::move(sink), spio::buffer_mode::line);
+            sink, spio::buffer_mode::line);
         std::string write = "Hello world!\n";
 
         bool flush = false;

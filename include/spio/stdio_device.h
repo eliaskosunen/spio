@@ -57,24 +57,24 @@ public:
         return m_handle;
     }
 
-    nonstd::expected<bool, failure> get(gsl::byte& r)
+    result get(gsl::byte& r, bool& eof)
     {
         Expects(is_open());
 
         if (std::feof(m_handle) != 0) {
-            return nonstd::make_unexpected(end_of_file);
+            return make_result(0, end_of_file);
         }
 
         auto n = std::fread(std::addressof(r), 1, 1, m_handle);
         if (SPIO_UNLIKELY(n == 0)) {
             if (SPIO_UNLIKELY(std::ferror(m_handle) != 0)) {
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
-            }
-            if (std::feof(m_handle) != 0) {
-                return false;
+                return make_result(0, SPIO_MAKE_ERRNO);
             }
         }
-        return true;
+        if (std::feof(m_handle) != 0) {
+            eof = true;
+        }
+        return static_cast<std::ptrdiff_t>(n);
     }
 
     bool putback(gsl::byte b)

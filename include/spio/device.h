@@ -98,8 +98,8 @@ using is_writable = is_detected<writable_op, Device>;
 
 template <typename Device>
 using ra_writable_op = decltype(
-    std::declval<Device>().write(std::declval<gsl::span<const gsl::byte>>(),
-                                 std::declval<streampos>()));
+    std::declval<Device>().write_at(std::declval<gsl::span<const gsl::byte>>(),
+                                    std::declval<streampos>()));
 template <typename Device>
 using is_random_access_writable = is_detected<ra_writable_op, Device>;
 
@@ -145,7 +145,8 @@ using is_random_access_readable = is_detected<ra_readable_op, Device>;
 
 template <typename Device>
 using byte_readable_op =
-    decltype(std::declval<Device>().get(std::declval<gsl::byte&>()));
+    decltype(std::declval<Device>().get(std::declval<gsl::byte&>(),
+                                        std::declval<bool&>()));
 template <typename Device>
 using is_byte_readable = is_detected<byte_readable_op, Device>;
 
@@ -205,7 +206,6 @@ template <typename Device>
 using is_device = conjunction<is_detected<closable_op, Device>,
                               is_detected<is_open_op, Device>,
                               disjunction<is_sink<Device>, is_source<Device>>>;
-
 SPIO_END_NAMESPACE
 
 #endif  // SPIO_DEVICE_H

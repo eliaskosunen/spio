@@ -24,56 +24,80 @@
 #include "config.h"
 
 #include "device.h"
+#include "error.h"
+#include "result.h"
+#include "third_party/expected.h"
 #include "third_party/gsl.h"
 
 SPIO_BEGIN_NAMESPACE
 
 namespace detail {
-template <bool C>
-struct memory_device_span;
-template <>
-struct memory_device_span<true> {
-    using type = gsl::span<const gsl::byte>;
-};
-template <>
-struct memory_device_span<false> {
-    using type = gsl::span<gsl::byte>;
-};
+    template <bool C>
+    struct memory_device_span;
+    template <>
+    struct memory_device_span<true> {
+        using type = gsl::span<const gsl::byte>;
+    };
+    template <>
+    struct memory_device_span<false> {
+        using type = gsl::span<gsl::byte>;
+    };
 
-template <bool IsConst>
-class memory_device_impl {
-public:
-    using span_type = typename memory_device_span<IsConst>::type;
-    using byte_type = typename span_type::value_type;
+    template <bool IsConst>
+    class memory_device_impl {
+    public:
+        using span_type = typename memory_device_span<IsConst>::type;
+        using byte_type = typename span_type::value_type;
 
-    SPIO_CONSTEXPR_STRICT memory_device_impl() = default;
-    SPIO_CONSTEXPR_STRICT memory_device_impl(span_type s) : m_buf(s) {}
+        SPIO_CONSTEXPR_STRICT memory_device_impl() = default;
+        SPIO_CONSTEXPR_STRICT memory_device_impl(span_type s) : m_buf(s) {}
 
-    bool is_open() const
-    {
-        return m_buf.data() != nullptr;
-    }
-    void close()
-    {
-        m_buf = span_type{};
-    }
+        bool is_open() const
+        {
+            return m_buf.data() != nullptr;
+        }
+        void close()
+        {
+            m_buf = span_type{};
+        }
 
-    template <bool C = IsConst>
-    auto output() -> typename std::enable_if<!C, gsl::span<gsl::byte>>::type
-    {
-        Expects(is_open());
-        return gsl::as_writeable_bytes(m_buf);
-    }
+        template <bool C = IsConst>
+        auto output() -> typename std::enable_if<!C, gsl::span<gsl::byte>>::type
+        {
+            Expects(is_open());
+            return gsl::as_writeable_bytes(m_buf);
+        }
+        template <bool C = IsConst>
+        auto write_at(gsl::span<const gsl::byte> s, streampos pos) ->
+            typename std::enable_if<!C, result>::type
+        {
+            Expects(is_open());
+            auto n = std::min(extent() - pos, s.size());
+            std::copy(s.begin(), s.begin() + n, m_buf.begin() + pos);
+            return n;
+        }
 
-    gsl::span<const gsl::byte> input() const
-    {
-        Expects(is_open());
-        return gsl::as_bytes(m_buf);
-    }
+        gsl::span<const gsl::byte> input() const
+        {
+            Expects(is_open());
+            return gsl::as_bytes(m_buf);
+        }
+        result read_at(gsl::span<gsl::byte> s, streampos pos)
+        {
+            Expects(is_open());
+            auto n = std::min(extent() - pos, s.size());
+            std::copy(m_buf.begin() + pos, m_buf.begin() + pos + n, s.begin());
+            return n;
+        }
 
-private:
-    span_type m_buf{};
-};
+        nonstd::expected<streamsize, failure> extent() const
+        {
+            return m_buf.size();
+        }
+
+    private:
+        span_type m_buf{};
+    };
 }  // namespace detail
 
 class memory_device : private detail::memory_device_impl<false> {
@@ -82,9 +106,12 @@ class memory_device : private detail::memory_device_impl<false> {
 public:
     using base::base;
     using base::close;
+    using base::extent;
     using base::input;
     using base::is_open;
     using base::output;
+    using base::read_at;
+    using base::write_at;
 };
 
 class memory_sink : private detail::memory_device_impl<false> {
@@ -93,8 +120,10 @@ class memory_sink : private detail::memory_device_impl<false> {
 public:
     using base::base;
     using base::close;
+    using base::extent;
     using base::is_open;
     using base::output;
+    using base::write_at;
 };
 
 class memory_source : private detail::memory_device_impl<true> {
@@ -103,8 +132,10 @@ class memory_source : private detail::memory_device_impl<true> {
 public:
     using base::base;
     using base::close;
+    using base::extent;
     using base::input;
     using base::is_open;
+    using base::read_at;
 };
 
 SPIO_END_NAMESPACE

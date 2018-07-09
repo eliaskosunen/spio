@@ -30,26 +30,22 @@ struct nullify_output_filter : spio::output_filter {
 };
 
 struct nullify_input_filter : spio::input_filter {
-    spio::result read(buffer_type& data,
-                      spio::source_filter& source,
-                      bool& eof) override
+    spio::result read(buffer_type& data) override
     {
-        SPIO_UNUSED(source);
-        SPIO_UNUSED(eof);
         std::fill(data.begin(), data.end(), gsl::to_byte(0));
-        return static_cast<size_type>(data.size());
+        return data.size();
     }
 };
 
 TEST_CASE("sink_filter")
 {
-    spio::sink_filter_chain chain;
-    CHECK(chain.size() == 0);
-    CHECK(chain.empty());
+    spio::sink_filter_chain<> chain;
+    CHECK(chain.get_dynamic().size() == 0);
+    CHECK(chain.get_dynamic().empty());
 
-    chain.push<spio::null_output_filter>();
-    CHECK(chain.size() == 1);
-    CHECK(!chain.empty());
+    chain.get_dynamic().push<spio::null_output_filter>();
+    CHECK(chain.get_dynamic().size() == 1);
+    CHECK(!chain.get_dynamic().empty());
 
     auto str = "Hello world!";
     auto len = std::strlen(str);
@@ -63,8 +59,8 @@ TEST_CASE("sink_filter")
     CHECK(!r.has_error());
     CHECK_EQ(std::strcmp(str, reinterpret_cast<char*>(buffer.data())), 0);
 
-    chain.push<nullify_output_filter>();
-    CHECK(chain.size() == 2);
+    chain.get_dynamic().push<nullify_output_filter>();
+    CHECK(chain.get_dynamic().size() == 2);
 
     r = chain.write(buffer);
     CHECK(r.value() == len);
@@ -77,13 +73,13 @@ TEST_CASE("sink_filter")
 
 TEST_CASE("source_filter")
 {
-    spio::source_filter_chain chain;
-    CHECK(chain.size() == 0);
-    CHECK(chain.empty());
+    spio::source_filter_chain<> chain;
+    CHECK(chain.get_dynamic().size() == 0);
+    CHECK(chain.get_dynamic().empty());
 
-    chain.push<spio::null_input_filter>();
-    CHECK(chain.size() == 1);
-    CHECK(!chain.empty());
+    chain.get_dynamic().push<spio::null_input_filter>();
+    CHECK(chain.get_dynamic().size() == 1);
+    CHECK(!chain.get_dynamic().empty());
 
     auto str = "Hello world!";
     auto len = std::strlen(str);
@@ -93,7 +89,7 @@ TEST_CASE("source_filter")
     spio::vector_source source(buffer);
 
     std::vector<gsl::byte> dest(len);
-    auto more = spio::readable_source_filter<spio::vector_source>(source);
+    auto d = gsl::make_span(dest);
 
     bool eof = false;
     source.read(gsl::as_writeable_bytes(gsl::make_span(
@@ -101,19 +97,18 @@ TEST_CASE("source_filter")
                 eof);
     CHECK(eof);
 
-    auto r = chain.read(dest, more, eof);
+    auto r = chain.read(d);
     CHECK(r.value() == len);
     CHECK(dest.size() == len);
-    CHECK(eof);
     CHECK(!r.has_error());
 
     CHECK(buffer.size() == dest.size());
     CHECK_EQ(std::memcmp(buffer.data(), dest.data(), dest.size()), 0);
 
-    chain.push<nullify_input_filter>();
-    CHECK(chain.size() == 2);
+    chain.get_dynamic().push<nullify_input_filter>();
+    CHECK(chain.get_dynamic().size() == 2);
 
-    r = chain.read(dest, more, eof);
+    r = chain.read(d);
     CHECK(r.value() == len);
     CHECK(!r.has_error());
 

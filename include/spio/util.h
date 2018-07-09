@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include <cstring>
 #include <memory>
 #include "third_party/gsl.h"
 
@@ -93,25 +94,25 @@ struct negation : std::integral_constant<bool, !bool(B::value)> {
 struct nonesuch {
     nonesuch() = delete;
     ~nonesuch() = delete;
-    nonesuch(nonesuch const&) = delete;
-    void operator=(nonesuch const&) = delete;
+    nonesuch(const nonesuch&) = delete;
+    void operator=(const nonesuch&) = delete;
 };
 
 namespace detail {
-template <class Default,
-          class AlwaysVoid,
-          template <class...> class Op,
-          class... Args>
-struct detector {
-    using value_t = std::false_type;
-    using type = Default;
-};
+    template <class Default,
+              class AlwaysVoid,
+              template <class...> class Op,
+              class... Args>
+    struct detector {
+        using value_t = std::false_type;
+        using type = Default;
+    };
 
-template <class Default, template <class...> class Op, class... Args>
-struct detector<Default, void_t<Op<Args...>>, Op, Args...> {
-    using value_t = std::true_type;
-    using type = Op<Args...>;
-};
+    template <class Default, template <class...> class Op, class... Args>
+    struct detector<Default, void_t<Op<Args...>>, Op, Args...> {
+        using value_t = std::true_type;
+        using type = Op<Args...>;
+    };
 }  // namespace detail
 
 template <template <class...> class Op, class... Args>
@@ -125,23 +126,74 @@ template <class Default, template <class...> class Op, class... Args>
 using detected_or = detail::detector<Default, void, Op, Args...>;
 
 namespace detail {
-template <typename T>
-T round_up_power_of_two(T n)
-{
-    T p = 1;
-    while (p < n)
-        p *= 2;
-    return p;
-}
+    template <typename T>
+    T round_up_power_of_two(T n)
+    {
+        T p = 1;
+        while (p < n)
+            p *= 2;
+        return p;
+    }
 #if SPIO_HAS_BUILTIN(__builtin_clz)
-inline uint32_t round_up_power_of_two(uint32_t n)
-{
-    Expects(n > 1);
-    Expects(n <= std::numeric_limits<uint32_t>::max() / 2 + 1);
-    return 1 << (32 - __builtin_clz(n - 1));
-}
+    inline uint32_t round_up_power_of_two(uint32_t n)
+    {
+        Expects(n > 1);
+        Expects(n <= std::numeric_limits<uint32_t>::max() / 2 + 1);
+        return 1 << (32 - __builtin_clz(n - 1));
+    }
 #endif
 }  // namespace detail
+
+template <typename Container, typename Element>
+class memcpy_back_insert_iterator {
+public:
+    using value_type = void;
+    using difference_type = void;
+    using pointer = void;
+    using reference = void;
+    using iterator_category = std::output_iterator_tag;
+
+    using container_type = Container;
+    using element_type = Element;
+    using container_value_type = typename Container::value_type;
+
+    static_assert(sizeof(element_type) % sizeof(container_value_type) == 0,
+                  "Element size not divisible by Container value_type");
+
+    memcpy_back_insert_iterator(container_type& c)
+        : m_container(std::addressof(c))
+    {
+    }
+
+    memcpy_back_insert_iterator& operator=(const element_type& value)
+    {
+        Expects(m_container);
+        const auto n = sizeof(element_type) / sizeof(container_value_type);
+        for (size_t i = 0; i < n; ++i) {
+            m_container->emplace_back();
+        }
+        std::memcpy(m_container->data() + m_container->size() - n,
+                    std::addressof(value), sizeof(element_type));
+        return *this;
+    }
+
+    memcpy_back_insert_iterator& operator*()
+    {
+        return *this;
+    }
+
+    memcpy_back_insert_iterator& operator++()
+    {
+        return *this;
+    }
+    memcpy_back_insert_iterator& operator++(int)
+    {
+        return *this;
+    }
+
+private:
+    container_type* m_container;
+};
 
 SPIO_END_NAMESPACE
 

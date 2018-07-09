@@ -72,46 +72,46 @@ enum class buffer_mode : std::uint8_t {
 };
 
 namespace detail {
-template <typename Sink>
-class basic_buffered_sink_base {
-public:
-    using sink_type = Sink;
+    template <typename Sink>
+    class basic_buffered_sink_base {
+    public:
+        using sink_type = Sink;
 
-    basic_buffered_sink_base(sink_type&& s) : m_source(std::move(s)) {}
+        basic_buffered_sink_base(sink_type* s) : m_sink(s) {}
 
-    sink_type& get() noexcept
-    {
-        return m_source;
-    }
-    const sink_type& get() const noexcept
-    {
-        return m_source;
-    }
-    sink_type& operator*() noexcept
-    {
-        return get();
-    }
-    const sink_type& operator*() const noexcept
-    {
-        return get();
-    }
-    sink_type* operator->() noexcept
-    {
-        return std::addressof(get());
-    }
-    const sink_type* operator->() const noexcept
-    {
-        return std::addressof(get());
-    }
+        sink_type& get() noexcept
+        {
+            return *m_sink;
+        }
+        const sink_type& get() const noexcept
+        {
+            return *m_sink;
+        }
+        sink_type& operator*() noexcept
+        {
+            return get();
+        }
+        const sink_type& operator*() const noexcept
+        {
+            return get();
+        }
+        sink_type* operator->() noexcept
+        {
+            return m_sink;
+        }
+        const sink_type* operator->() const noexcept
+        {
+            return m_sink;
+        }
 
-private:
-    sink_type m_source;
-};
+    private:
+        sink_type* m_sink;
+    };
 }  // namespace detail
 
 template <typename Writable>
 class basic_buffered_writable
-    : private detail::basic_buffered_sink_base<Writable> {
+    : public detail::basic_buffered_sink_base<Writable> {
     using base = detail::basic_buffered_sink_base<Writable>;
 
 public:
@@ -119,13 +119,18 @@ public:
     using buffer_type = std::vector<gsl::byte>;
     using size_type = std::ptrdiff_t;
 
-    basic_buffered_writable(writable_type&& w,
+    basic_buffered_writable(writable_type& w,
                             buffer_mode m,
                             size_type s = BUFSIZ)
-        : base(std::move(w)), m_buf(_init_buffer(m, s)), m_mode(m)
+        : base(std::addressof(w)), m_buf(_init_buffer(m, s)), m_mode(m)
     {
     }
 
+    result write(gsl::span<const gsl::byte> s)
+    {
+        bool f = false;
+        return write(s, f);
+    }
     result write(gsl::span<const gsl::byte> s, bool& flushed)
     {
         Expects(use_buffering());
@@ -173,6 +178,8 @@ public:
 
     result flush()
     {
+        Expects(use_buffering());
+
         auto res = base::get().write(gsl::make_span(m_buf.data(), in_use()));
         if (SPIO_LIKELY(res.value() == in_use())) {
             m_next = 0;

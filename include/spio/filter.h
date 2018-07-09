@@ -31,7 +31,6 @@ SPIO_BEGIN_NAMESPACE
 
 struct filter_base {
     using size_type = std::ptrdiff_t;
-    using buffer_type = std::vector<gsl::byte>;
 
     filter_base(const filter_base&) = default;
     filter_base& operator=(const filter_base&) = default;
@@ -45,10 +44,12 @@ protected:
 };
 
 struct output_filter : filter_base {
+    using buffer_type = std::vector<gsl::byte>;
+
     virtual result write(buffer_type& data) = 0;
 };
 struct byte_output_filter : filter_base {
-    using sink_type = std::function<result(gsl::byte)>;
+    using buffer_type = void;
 
     virtual result put(gsl::byte data) = 0;
 };
@@ -67,24 +68,21 @@ struct null_byte_output_filter : byte_output_filter {
     }
 };
 
-struct source_filter : filter_base {
-    virtual result read(gsl::span<gsl::byte> data, bool& eof) = 0;
-};
 struct input_filter : filter_base {
-    virtual result read(buffer_type& data,
-                        source_filter& source,
-                        bool& eof) = 0;
+    using buffer_type = gsl::span<gsl::byte>;
+
+    virtual result read(buffer_type& data) = 0;
 };
 struct byte_input_filter : filter_base {
+    using buffer_type = void;
+
     virtual result get(gsl::byte& data) = 0;
 };
 
 struct null_input_filter : input_filter {
-    result read(buffer_type& data, source_filter& source, bool& eof) override
+    result read(buffer_type& data) override
     {
-        SPIO_UNUSED(source);
-        SPIO_UNUSED(eof);
-        return static_cast<size_type>(data.size());
+        return data.size();
     }
 };
 struct null_byte_input_filter : byte_input_filter {
@@ -95,32 +93,81 @@ struct null_byte_input_filter : byte_input_filter {
     }
 };
 
-template <typename Readable>
-class readable_source_filter : public source_filter {
-public:
-    using readable_type = Readable;
+namespace detail {
+    template <int... Is>
+    struct seq {
+    };
 
-    readable_source_filter(readable_type& r) : source_filter(), m_readable(r) {}
+    template <int N, int... Is>
+    struct gen_seq : gen_seq<N - 1, N - 1, Is...> {
+    };
+    template <int... Is>
+    struct gen_seq<0, Is...> : seq<Is...> {
+    };
 
-    result read(gsl::span<gsl::byte> data, bool& eof) override
+    template <typename T, typename F, int... Is>
+    auto for_each(T& t, F f, seq<Is...>)
+        -> std::initializer_list<typename std::result_of<F(T&)>::type>
     {
-        return m_readable.read(data, eof);
+        SPIO_UNUSED(f);
+        return {f(std::get<Is>(t))...};
+    }
+}  // namespace detail
+
+template <typename... Filters>
+class basic_static_chain {
+public:
+    using filter_list = std::tuple<Filters...>;
+    using size_type = std::ptrdiff_t;
+
+    basic_static_chain() = default;
+    basic_static_chain(filter_list l) : m_list(std::move(l)) {}
+
+    template <typename... A>
+    basic_static_chain(A&&... a) : m_list(std::forward<A>(a)...)
+    {
+    }
+
+    filter_list& filters() &
+    {
+        return m_list;
+    }
+    const filter_list& filters() const&
+    {
+        return m_list;
+    }
+    filter_list&& filters() &&
+    {
+        return std::move(m_list);
+    }
+
+    SPIO_CONSTEXPR_STRICT size_type size() const
+    {
+        return std::tuple_size<filter_list>::value;
+    }
+
+    template <typename F>
+    auto for_each(F&& f)
+        -> std::initializer_list<typename std::result_of<F(filter_list&)>::type>
+    {
+        return detail::for_each(
+            m_list, std::forward<F>(f),
+            detail::gen_seq<std::tuple_size<filter_list>::value>());
     }
 
 private:
-    readable_type& m_readable;
+    filter_list m_list;
 };
 
 template <typename Base>
-class basic_chain_base {
+class basic_dynamic_chain {
 public:
     using filter_type = Base;
     using filter_ptr = std::unique_ptr<Base>;
     using filter_list = std::vector<filter_ptr>;
     using size_type = std::ptrdiff_t;
-    using buffer_type = typename Base::buffer_type;
 
-    basic_chain_base() = default;
+    basic_dynamic_chain() = default;
 
     filter_list& filters() &
     {
@@ -167,25 +214,135 @@ private:
     filter_list m_list;
 };
 
-class sink_filter_chain : public basic_chain_base<output_filter> {
+template <typename Base, typename... StaticFilters>
+class basic_chain_base {
 public:
-    result write(buffer_type& buf)
+    using static_type = basic_static_chain<StaticFilters...>;
+    using dynamic_type = basic_dynamic_chain<Base>;
+    using size_type = std::ptrdiff_t;
+    using buffer_type = typename Base::buffer_type;
+
+    basic_chain_base() = default;
+    basic_chain_base(static_type s, dynamic_type d)
+        : m_static(std::move(s)), m_dynamic(std::move(d))
     {
-        for (auto& f : filters()) {
+    }
+
+    static_type& get_static() &
+    {
+        return m_static;
+    }
+    const static_type& get_static() const&
+    {
+        return m_static;
+    }
+    static_type&& get_static() &&
+    {
+        return std::move(m_static);
+    }
+
+    dynamic_type& get_dynamic() &
+    {
+        return m_dynamic;
+    }
+    const dynamic_type& get_dynamic() const&
+    {
+        return m_dynamic;
+    }
+    dynamic_type&& get_dynamic() &&
+    {
+        return std::move(m_dynamic);
+    }
+
+private:
+    static_type m_static;
+    dynamic_type m_dynamic;
+};
+
+template <typename... StaticFilters>
+class sink_filter_chain
+    : public basic_chain_base<output_filter, StaticFilters...> {
+    using base = basic_chain_base<output_filter, StaticFilters...>;
+
+    struct static_filter_callback {
+        template <typename T>
+        result operator()(T& a)
+        {
+            if (r.value() >=
+                    static_cast<typename base::size_type>(buf.size()) &&
+                !r.has_error()) {
+                r = a->write(buf);
+            }
+            return r;
+        }
+
+        typename base::buffer_type& buf;
+        result& r;
+    };
+
+public:
+    result write(typename base::buffer_type& buf)
+    {
+        if (base::get_static().size() > 0) {
+            auto res =
+                result{static_cast<typename base::size_type>(buf.size())};
+            auto l =
+                base::get_static().for_each(static_filter_callback{buf, res});
+            Ensures(static_cast<typename base::size_type>(l.size()) ==
+                    base::get_static().size());
+            for (auto& r : l) {
+                if (r.value() <
+                        static_cast<typename base::size_type>(buf.size()) ||
+                    r.has_error()) {
+                    return r;
+                }
+            }
+        }
+        for (auto& f : base::get_dynamic().filters()) {
             auto r = f->write(buf);
-            if (r.value() < static_cast<size_type>(buf.size()) ||
+            if (r.value() < static_cast<typename base::size_type>(buf.size()) ||
                 r.has_error()) {
                 return r;
             }
         }
-        return static_cast<size_type>(buf.size());
+        return static_cast<typename base::size_type>(buf.size());
     }
 };
-class byte_sink_filter_chain : public basic_chain_base<byte_output_filter> {
+template <typename... StaticFilters>
+class byte_sink_filter_chain
+    : public basic_chain_base<byte_output_filter, StaticFilters...> {
+    using base = basic_chain_base<byte_output_filter, StaticFilters...>;
+
+    struct static_filter_callback {
+        template <typename T>
+        result operator()(T& a)
+        {
+            if (r.value() != 0 && !r.has_error()) {
+                r = a->put(b);
+            }
+            return r;
+        }
+
+        gsl::byte b;
+        result& r;
+    };
+
 public:
     result put(gsl::byte b)
     {
-        for (auto& f : filters()) {
+        if (base::get_static().size() > 0) {
+            auto res = result{1};
+            auto l =
+                base::get_static().for_each(static_filter_callback{b, res});
+            Ensures(static_cast<typename base::size_type>(l.size()) ==
+                    base::get_static().size());
+            for (auto& r : l) {
+                if (r.value() != 1 || r.has_error()) {
+                    return r;
+                }
+            }
+        }
+        for (auto& f : base::get_dynamic().filters()) {
             auto r = f->put(b);
             if (r.value() == 0 || r.has_error()) {
                 return r;
@@ -195,25 +352,90 @@ public:
     }
 };
 
-class source_filter_chain : public basic_chain_base<input_filter> {
+template <typename... StaticFilters>
+class source_filter_chain
+    : public basic_chain_base<input_filter, StaticFilters...> {
+    using base = basic_chain_base<input_filter, StaticFilters...>;
+
+    struct static_filter_callback {
+        template <typename T>
+        result operator()(T& a)
+        {
+            if (r.value() >=
+                    static_cast<typename base::size_type>(buf.size()) &&
+                !r.has_error()) {
+                r = a->read(buf);
+            }
+            return r;
+        }
+
+        typename base::buffer_type& buf;
+        result& r;
+    };
+
 public:
-    result read(buffer_type& buf, source_filter& source, bool& eof)
+    result read(typename base::buffer_type buf)
     {
-        for (auto& f : filters()) {
-            auto r = f->read(buf, source, eof);
-            if (r.value() < static_cast<size_type>(buf.size()) ||
+        if (base::get_static().size() > 0) {
+            auto res =
+                result{static_cast<typename base::size_type>(buf.size())};
+            auto l =
+                base::get_static().for_each(static_filter_callback{buf, res});
+            Ensures(static_cast<typename base::size_type>(l.size()) ==
+                    base::get_static().size());
+            for (auto& r : l) {
+                if (r.value() <=
+                        static_cast<typename base::size_type>(buf.size()) ||
+                    r.has_error()) {
+                    return r;
+                }
+            }
+        }
+        for (auto& f : base::get_dynamic().filters()) {
+            auto r = f->read(buf);
+            if (r.value() < static_cast<typename base::size_type>(buf.size()) ||
                 r.has_error()) {
                 return r;
             }
         }
-        return static_cast<size_type>(buf.size());
+        return static_cast<typename base::size_type>(buf.size());
     }
 };
-class byte_source_filter_chain : public basic_chain_base<byte_input_filter> {
+template <typename... StaticFilters>
+class byte_source_filter_chain
+    : public basic_chain_base<byte_input_filter, StaticFilters...> {
+    using base = basic_chain_base<byte_input_filter, StaticFilters...>;
+
+    struct static_filter_callback {
+        template <typename T>
+        result operator()(T& a)
+        {
+            if (r.value() != 0 && !r.has_error()) {
+                r = a->get(b);
+            }
+            return r;
+        }
+
+        gsl::byte& b;
+        result& r;
+    };
+
 public:
     result get(gsl::byte& b)
     {
-        for (auto& f : filters()) {
+        if (base::get_static().size() > 0) {
+            auto res = result{1};
+            auto l =
+                base::get_static().for_each(static_filter_callback{b, res});
+            Ensures(static_cast<typename base::size_type>(l.size()) ==
+                    base::get_static().size());
+            for (auto& r : l) {
+                if (r.value() != 1 || r.has_error()) {
+                    return r;
+                }
+            }
+        }
+        for (auto& f : base::get_dynamic().filters()) {
             auto r = f->get(b);
             if (r.value() == 0 || r.has_error()) {
                 return r;

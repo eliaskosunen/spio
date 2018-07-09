@@ -102,6 +102,7 @@ add_spio_test(ring)
 add_spio_test(source_buffer)
 add_spio_test(sink_buffer)
 add_spio_test(filter)
+add_spio_test(print)
 
 print_target_properties(empty)
 

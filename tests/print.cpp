@@ -18,38 +18,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef SPIO_SPIO_H
-#define SPIO_SPIO_H
+#include <spio/spio.h>
+#include "doctest.h"
 
-#include "config.h"
-
-#if SPIO_GCC
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Weffc++"
-#endif
-
-#include "ring.h"
-#include "string_view.h"
-#include "util.h"
-
-#include "container_device.h"
-#include "memory_device.h"
-#include "stdio_device.h"
-
-#if SPIO_USE_AFIO
-#include "afio_device.h"
-#endif
-
-#include "sink.h"
-#include "source.h"
-
-#include "filter.h"
-#include "formatter.h"
-#include "stream.h"
-#include "stream_base.h"
-
-#if SPIO_GCC
-#pragma GCC diagnostic pop
-#endif
-
-#endif  // SPIO_SPIO_H
+TEST_CASE("print")
+{
+    spio::stdio_sink sink(stdout);
+    using stream_type = spio::stream<spio::stdio_sink, spio::character<char>,
+                                     spio::sink_filter_chain>;
+    stream_type stream(
+        sink, stream_type::input_base{},
+        stream_type::output_base::sink_type(sink, spio::buffer_mode::none),
+        stream_type::chain_type{});
+    spio::print(stream, "Hello world\n");
+    spio::print(stream, "Number: {}\n", 42);
+}

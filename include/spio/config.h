@@ -93,7 +93,7 @@
 #define SPIO_WINDOWS 64
 #else
 #define SPIO_WINDOWS 32
-#endif // _WIN64
+#endif  // _WIN64
 #else
 #define SPIO_WINDOWS 0
 #endif
@@ -138,7 +138,7 @@
 #define SPIO_INLINE_NAMESPACE_NAME v0
 #define SPIO_BEGIN_NAMESPACE \
     namespace spio {         \
-    inline namespace SPIO_INLINE_NAMESPACE_NAME {
+        inline namespace SPIO_INLINE_NAMESPACE_NAME {
 #define SPIO_END_NAMESPACE \
     }                      \
     }
@@ -153,12 +153,14 @@
     (SPIO_MSVC >= SPIO_COMPILER(19, 10, 0) && SPIO_MSVC_LANG >= SPIO_STD_17)
 #define SPIO_HAS_STD_STRING_VIEW 1
 #endif
+// clang-format off
 #if (defined(__cpp_lib_experimental_string_view) &&    \
      __cpp_lib_experimental_string_view >= 201411) ||  \
-    (SPIO_HAS_INCLUDE(<experimental / string_view>) && \
+    (SPIO_HAS_INCLUDE(<experimental/string_view>) && \
      __cplusplus >= SPIO_STD_14)
 #define SPIO_HAS_EXP_STRING_VIEW 1
 #endif
+// clang-format on
 
 #ifndef SPIO_HAS_STD_STRING_VIEW
 #define SPIO_HAS_STD_STRING_VIEW 0

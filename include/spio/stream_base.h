@@ -41,6 +41,10 @@ public:
     {
         return m_flags[0];
     }
+    bool eof() const noexcept
+    {
+        return m_flags[1];
+    }
     virtual operator bool() const noexcept
     {
         return bad();
@@ -62,10 +66,19 @@ protected:
         m_flags[0] = false;
     }
 
+    void _set_eof()
+    {
+        m_flags[1] = true;
+    }
+    void _clear_eof()
+    {
+        m_flags[1] = false;
+    }
+
 private:
     static std::vector<bool> _flags_init()
     {
-        return {false};
+        return {false, false};
     }
 
     std::vector<bool> m_flags{_flags_init()};  // Intentional vector<bool>

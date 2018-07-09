@@ -41,6 +41,7 @@
 #pragma clang diagnostic ignored "-Wweak-vtables"
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
 #pragma clang diagnostic ignored "-Wunused-member-function"
+#pragma clang diagnostic ignored "-Wglobal-constructors"
 #endif
 
 #if SPIO_MSVC

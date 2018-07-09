@@ -24,8 +24,86 @@
 #include "config.h"
 
 #include "device.h"
+#include "error.h"
+#include "third_party/expected.h"
 
 SPIO_BEGIN_NAMESPACE
+
+template <typename Device>
+class basic_owned_device {
+public:
+    using device_type = Device;
+
+    basic_owned_device() = default;
+    template <typename... Args>
+    basic_owned_device(Args&&... a) : m_dev(std::forward<Args>(a)...)
+    {
+    }
+
+    basic_owned_device(const basic_owned_device&) = delete;
+    basic_owned_device& operator=(const basic_owned_device&) = delete;
+    basic_owned_device(basic_owned_device&&) noexcept = default;
+    basic_owned_device& operator=(basic_owned_device&&) noexcept = default;
+    ~basic_owned_device()
+    {
+        if (is_open()) {
+            close();
+        }
+    }
+
+    template <typename... Args>
+    void open(Args&&... a)
+    {
+        m_dev = device_type(std::forward<Args>(a)...);
+    }
+    bool is_open() const
+    {
+        return m_dev.is_open();
+    }
+    void close()
+    {
+        Expects(is_open());
+        m_dev.close();
+    }
+
+    device_type& get() &
+    {
+        return m_dev;
+    }
+    const device_type& get() const&
+    {
+        return m_dev;
+    }
+    device_type&& get() &&
+    {
+        return std::move(m_dev);
+    }
+
+    device_type& operator*() &
+    {
+        return get();
+    }
+    const device_type& operator*() const&
+    {
+        return get();
+    }
+    device_type&& operator*() &&
+    {
+        return get();
+    }
+
+    device_type* operator->()
+    {
+        return std::addressof(get());
+    }
+    const device_type* operator->() const
+    {
+        return std::addressof(get());
+    }
+
+private:
+    device_type m_dev{};
+};
 
 SPIO_END_NAMESPACE
 
