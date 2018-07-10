@@ -214,19 +214,14 @@ private:
     filter_list m_list;
 };
 
-template <typename Base, typename... StaticFilters>
-class basic_chain_base {
+template <typename... StaticFilters>
+class chain_base {
 public:
     using static_type = basic_static_chain<StaticFilters...>;
-    using dynamic_type = basic_dynamic_chain<Base>;
     using size_type = std::ptrdiff_t;
-    using buffer_type = typename Base::buffer_type;
 
-    basic_chain_base() = default;
-    basic_chain_base(static_type s, dynamic_type d)
-        : m_static(std::move(s)), m_dynamic(std::move(d))
-    {
-    }
+    chain_base() = default;
+    chain_base(static_type s) : m_static(std::move(s)) {}
 
     static_type& get_static() &
     {
@@ -239,6 +234,24 @@ public:
     static_type&& get_static() &&
     {
         return std::move(m_static);
+    }
+
+private:
+    static_type m_static;
+};
+
+template <typename Base, typename... StaticFilters>
+class basic_chain_base : public chain_base<StaticFilters...> {
+public:
+    using static_type = basic_static_chain<StaticFilters...>;
+    using dynamic_type = basic_dynamic_chain<Base>;
+    using size_type = std::ptrdiff_t;
+    using buffer_type = typename Base::buffer_type;
+
+    basic_chain_base() = default;
+    basic_chain_base(static_type s, dynamic_type d)
+        : chain_base<StaticFilters...>(std::move(s)), m_dynamic(std::move(d))
+    {
     }
 
     dynamic_type& get_dynamic() &
@@ -255,7 +268,6 @@ public:
     }
 
 private:
-    static_type m_static;
     dynamic_type m_dynamic;
 };
 

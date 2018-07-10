@@ -40,7 +40,7 @@ public:
 #endif
     SPIO_CONSTEXPR_STRICT streampos(streamoff n) noexcept : m_pos(n) {}
 
-    SPIO_CONSTEXPR_STRICT operator streamoff() const noexcept
+    SPIO_CONSTEXPR_STRICT explicit operator streamoff() const noexcept
     {
         return m_pos;
     }
@@ -75,12 +75,12 @@ private:
 
 inline streampos operator+(streampos l, streampos r)
 {
-    l += r;
+    l += streamoff(r);
     return l;
 }
 inline streampos operator-(streampos l, streampos r)
 {
-    l -= r;
+    l -= streamoff(r);
     return l;
 }
 

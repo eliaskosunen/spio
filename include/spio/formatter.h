@@ -93,7 +93,7 @@ auto print_at(Stream& s,
     s.formatter()(memcpy_back_insert_iterator<std::vector<gsl::byte>,
                                               typename Stream::char_type>(buf),
                   f, a...);
-    return write_at(s, pos, buf);
+    return write_at(s, buf, pos);
 }
 
 SPIO_END_NAMESPACE

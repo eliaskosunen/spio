@@ -42,10 +42,11 @@ public:
     {
         return m_handle != nullptr;
     }
-    SPIO_CONSTEXPR void close()
+    nonstd::expected<void, failure> close()
     {
         Expects(is_open());
         m_handle = nullptr;
+        return {};
     }
 
     SPIO_CONSTEXPR std::FILE* handle() noexcept
@@ -112,7 +113,7 @@ public:
                                               inout which = in | out)
     {
         SPIO_UNUSED(which);
-        return seek(pos, seekdir::beg);
+        return seek(streamoff(pos), seekdir::beg);
     }
     nonstd::expected<streampos, failure> seek(streamoff off,
                                               seekdir dir,

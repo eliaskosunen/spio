@@ -54,26 +54,26 @@ public:
         return !(operator bool());
     }
 
-protected:
-    stream_base() = default;
-
-    void _set_bad()
+    void set_bad()
     {
         m_flags[0] = true;
     }
-    void _clear_bad()
+    void clear_bad()
     {
         m_flags[0] = false;
     }
 
-    void _set_eof()
+    void set_eof()
     {
         m_flags[1] = true;
     }
-    void _clear_eof()
+    void clear_eof()
     {
         m_flags[1] = false;
     }
+
+protected:
+    stream_base() = default;
 
 private:
     static std::vector<bool> _flags_init()

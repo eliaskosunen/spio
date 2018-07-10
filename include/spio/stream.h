@@ -25,10 +25,10 @@
 
 #include "filter.h"
 #include "formatter.h"
-#include "owned_device.h"
 #include "sink.h"
 #include "source.h"
 #include "stream_base.h"
+#include "third_party/optional.h"
 
 SPIO_BEGIN_NAMESPACE
 
@@ -69,32 +69,51 @@ namespace detail {
 
     template <typename Device, typename Char, typename Enable = void>
     class output_stream_base {
+    public:
+        output_stream_base() = default;
     };
     template <typename Device, typename Char>
     class output_stream_base<
         Device,
         Char,
-        typename std::enable_if<is_sink<Device>::value>::type> {
+        typename std::enable_if<is_sink<Device>::value &&
+                                !is_writable<Device>::value>::type> {
     public:
-        using sink_type =
-            typename std::conditional<is_writable<Device>::value,
-                                      guarded_buffered_writable<Device>,
-                                      Device>::type;
         using formatter_type = basic_formatter<Char>;
 
+        output_stream_base() = default;
+
+        formatter_type formatter() const
+        {
+            return formatter_type{};
+        }
+    };
+    template <typename Device, typename Char>
+    class output_stream_base<
+        Device,
+        Char,
+        typename std::enable_if<is_writable<Device>::value>::type> {
+    public:
+        using sink_type = guarded_buffered_writable<Device>;
+        using formatter_type = basic_formatter<Char>;
+
+        output_stream_base() = default;
         output_stream_base(sink_type s) : m_sink(std::move(s)) {}
 
-        sink_type& sink() &
+        sink_type& sink()
+        {
+            Expects(m_sink.has_value());
+            return *m_sink;
+        }
+        const sink_type& sink() const
+        {
+            Expects(m_sink.has_value());
+            return *m_sink;
+        }
+
+        nonstd::optional<sink_type>& sink_storage()
         {
             return m_sink;
-        }
-        const sink_type& sink() const&
-        {
-            return m_sink;
-        }
-        sink_type&& sink() &&
-        {
-            return std::move(m_sink);
         }
 
         formatter_type formatter() const
@@ -103,38 +122,42 @@ namespace detail {
         }
 
     private:
-        sink_type m_sink;
+        nonstd::optional<sink_type> m_sink;
     };
 
     template <typename Device, typename Enable = void>
     class input_stream_base {
+    public:
+        input_stream_base() = default;
     };
     template <typename Device>
     class input_stream_base<
         Device,
-        typename std::enable_if<is_source<Device>::value>::type> {
+        typename std::enable_if<is_readable<Device>::value>::type> {
     public:
-        using source_type =
-            typename std::conditional<is_readable<Device>::value,
-                                      basic_buffered_readable<Device>,
-                                      Device>::type;
+        using source_type = basic_buffered_readable<Device>;
+
+        input_stream_base() = default;
         input_stream_base(source_type s) : m_source(std::move(s)) {}
 
         source_type& source() &
         {
-            return m_source;
+            Expects(m_source.has_value());
+            return *m_source;
         }
         const source_type& source() const&
         {
-            return m_source;
+            Expects(m_source.has_value());
+            return *m_source;
         }
-        source_type&& source() &&
+
+        nonstd::optional<source_type> source_storage()
         {
-            return std::move(m_source);
+            return m_source;
         }
 
     private:
-        source_type m_source;
+        nonstd::optional<source_type> m_source;
     };
 }  // namespace detail
 
@@ -156,6 +179,15 @@ public:
           m_chain(std::move(c)),
           m_device(std::move(d))
     {
+    }
+
+    virtual bool is_open() const
+    {
+        return device().is_open();
+    }
+    virtual nonstd::expected<void, failure> close()
+    {
+        return device().close();
     }
 
     chain_type& chain()
@@ -180,6 +212,12 @@ public:
         return std::move(m_device);
     }
 
+protected:
+    stream(device_type d, chain_type c)
+        : m_chain(std::move(c)), m_device(std::move(d))
+    {
+    }
+
 private:
     chain_type m_chain;
     device_type m_device;
@@ -195,7 +233,7 @@ result write(Stream& s, std::vector<gsl::byte> buf)
     if (s.sink().use_buffering()) {
         return s.sink().write(buf);
     }
-    return s.sink()->write(buf);
+    return s.device().write(buf);
 }
 template <typename Stream>
 result write(Stream& s, gsl::span<const gsl::byte> data)
@@ -208,10 +246,10 @@ template <typename Stream>
 result write_at(Stream& s, std::vector<gsl::byte> buf, streampos pos)
 {
     auto r = s.chain().write(buf);
-    if (r.value() < buf.size() || r.has_error()) {
+    if (r.value() < static_cast<std::ptrdiff_t>(buf.size()) || r.has_error()) {
         return r;
     }
-    return s.sink().write_at(buf, pos);
+    return s.device().write_at(buf, pos);
 }
 template <typename Stream>
 result write_at(Stream& s, gsl::span<const gsl::byte> data, streampos pos)
@@ -227,51 +265,59 @@ result put(Stream& s, gsl::byte data)
     if (r.value() != 1 || r.has_error()) {
         return r;
     }
-    return s.sink().put(data);
+    return s.device().put(data);
 }
 
 template <typename Stream>
 result flush(Stream& s)
 {
-    return s.sink().flush();
+    return s.device().flush();
 }
 
 template <typename Stream>
-result read(Stream& s, gsl::span<gsl::byte> data, bool& eof)
+result read(Stream& s, gsl::span<gsl::byte> data)
 {
+    bool eof = false;
     auto r = s.source().read(data, eof);
     if (r.has_error()) {
-        s.source().putback(data.first(r.value()));
+        putback(s, data.first(r.value()));
         return make_result(0, r.error());
+    }
+    if (eof) {
+        s.set_eof();
     }
     data = data.first(r.value());
     r = s.chain().read(data);
     if (r.has_error()) {
-        s.source().putback(data);
+        putback(s, data);
         return make_result(0, r.error());
     }
     if (r.value() < data.size()) {
-        s.source().putback(data.subspan(r.value()));
+        putback(s, data.subspan(r.value()));
     }
     return r;
 }
 
 template <typename Stream>
-result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos, bool& eof)
+result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
 {
-    auto r = s.source().read_at(data, pos, eof);
+    bool eof = false;
+    auto r = s.device().read_at(data, pos, eof);
     if (r.has_error()) {
-        s.source().putback(data.first(r.value()));
+        putback(s, data.first(r.value()));
         return make_result(0, r.error());
+    }
+    if (eof) {
+        s.set_eof();
     }
     data = data.first(r.value());
     r = s.chain().read(data);
     if (r.has_error()) {
-        s.source().putback(data);
+        putback(s, data);
         return make_result(0, r.error());
     }
     if (r.value() < data.size()) {
-        s.source().putback(data.subspan(r.value()));
+        putback(s, data.subspan(r.value()));
     }
     return r;
 }
@@ -279,21 +325,38 @@ result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos, bool& eof)
 template <typename Stream>
 result get(Stream& s, gsl::byte& data, bool& eof)
 {
-    auto r = s.source().get(data, eof);
+    auto r = s.device().get(data, eof);
     if (r.has_error()) {
         if (r.value() == 1) {
-            s.source().putback(data);
+            putback(s, data);
         }
         return make_result(0, r.error());
     }
     r = s.chain().get(data);
     if (r.has_error()) {
         if (r.value() == 1) {
-            s.source().putback(data);
+            putback(s, data);
         }
         return make_result(0, r.error());
     }
     return r;
+}
+
+template <typename Stream>
+auto putback(Stream& s, gsl::span<const gsl::byte> d) ->
+    typename std::enable_if<is_writable<Stream>::value, bool>::type
+{
+    s.clear_eof();
+    return s.source().putback(d);
+}
+template <typename Stream>
+auto putback(Stream& s, gsl::byte d) ->
+    typename std::enable_if<is_byte_writable<Stream>::value &&
+                                !is_writable<Stream>::value,
+                            bool>::type
+{
+    s.clear_eof();
+    return s.device().putback(d);
 }
 
 SPIO_END_NAMESPACE

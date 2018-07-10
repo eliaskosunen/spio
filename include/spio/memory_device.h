@@ -56,9 +56,10 @@ namespace detail {
         {
             return m_buf.data() != nullptr;
         }
-        void close()
+        nonstd::expected<void, failure> close()
         {
             m_buf = span_type{};
+            return {};
         }
 
         template <bool C = IsConst>
@@ -72,8 +73,10 @@ namespace detail {
             typename std::enable_if<!C, result>::type
         {
             Expects(is_open());
-            auto n = std::min(extent() - pos, s.size());
-            std::copy(s.begin(), s.begin() + n, m_buf.begin() + pos);
+            auto ext = extent();
+            auto n = std::min(static_cast<streamoff>(ext.value() - pos),
+                              static_cast<streamoff>(s.size()));
+            std::copy(s.begin(), s.begin() + n, m_buf.begin() + streamoff(pos));
             return n;
         }
 
@@ -85,7 +88,9 @@ namespace detail {
         result read_at(gsl::span<gsl::byte> s, streampos pos)
         {
             Expects(is_open());
-            auto n = std::min(extent() - pos, s.size());
+            auto ext = extent();
+            auto n = std::min(static_cast<streamoff>(ext.value() - pos),
+                              static_cast<streamoff>(s.size()));
             std::copy(m_buf.begin() + pos, m_buf.begin() + pos + n, s.begin());
             return n;
         }

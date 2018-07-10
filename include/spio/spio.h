@@ -43,6 +43,7 @@
 #include "sink.h"
 #include "source.h"
 
+#include "device_stream.h"
 #include "filter.h"
 #include "formatter.h"
 #include "stream.h"

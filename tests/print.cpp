@@ -23,13 +23,41 @@
 
 TEST_CASE("print")
 {
-    spio::stdio_sink sink(stdout);
-    using stream_type = spio::stream<spio::stdio_sink, spio::character<char>,
-                                     spio::sink_filter_chain>;
-    stream_type stream(
-        sink, stream_type::input_base{},
-        stream_type::output_base::sink_type(sink, spio::buffer_mode::none),
-        stream_type::chain_type{});
-    spio::print(stream, "Hello world\n");
-    spio::print(stream, "Number: {}\n", 42);
+    SUBCASE("stdout")
+    {
+        spio::stdio_sink sink(stdout);
+        using stream_type =
+            spio::stream<spio::stdio_sink, spio::character<char>,
+                         spio::sink_filter_chain>;
+        stream_type stream(
+            sink, stream_type::input_base{},
+            stream_type::output_base::sink_type(sink, spio::buffer_mode::none),
+            stream_type::chain_type{});
+        spio::print(stream, "Hello world\n");
+        spio::print(stream, "Number: {}\n", 42);
+    }
+
+    SUBCASE("stdio_handle")
+    {
+        spio::basic_stdio_handle_iostream<spio::character<char>> s(
+            stdout, spio::buffer_mode::full);
+        spio::print(s, "Hello world\n");
+        spio::print(s, "Number: {}\n", 42);
+    }
+
+    SUBCASE("memory_sink")
+    {
+        std::vector<gsl::byte> buf(12);
+        spio::memory_sink sink(buf);
+        using stream_type =
+            spio::stream<spio::memory_sink, spio::character<char>,
+                         spio::sink_filter_chain>;
+        stream_type stream(sink, stream_type::input_base{},
+                           stream_type::output_base{},
+                           stream_type::chain_type{});
+
+        spio::print_at(stream, 0, "Hello world!\n");
+
+        CHECK_EQ(std::memcmp(buf.data(), "Hello world!\n", 12), 0);
+    }
 }
