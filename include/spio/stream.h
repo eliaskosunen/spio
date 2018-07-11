@@ -173,6 +173,19 @@ public:
     using chain_type = typename Char::template apply_filters<Chain>;
     using device_type = Device;
 
+    class output_sentry {
+        output_sentry(stream& s)
+        {
+            SPIO_UNUSED(s);
+        }
+    };
+    class input_sentry {
+        input_sentry(stream& s)
+        {
+            SPIO_UNUSED(s);
+        }
+    };
+
     stream(device_type d, input_base i, output_base o, chain_type c)
         : input_base(std::move(i)),
           output_base(std::move(o)),
@@ -271,7 +284,12 @@ result put(Stream& s, gsl::byte data)
 template <typename Stream>
 result flush(Stream& s)
 {
-    return s.device().flush();
+    return s.sink().flush();
+}
+template <typename Stream>
+nonstd::expected<void, failure> sync(Stream& s)
+{
+    return s.device().sync();
 }
 
 template <typename Stream>
@@ -357,6 +375,27 @@ auto putback(Stream& s, gsl::byte d) ->
 {
     s.clear_eof();
     return s.device().putback(d);
+}
+
+template <typename Stream>
+nonstd::expected<streampos, failure> seek(Stream& s,
+                                          streampos pos,
+                                          inout which = in | out)
+{
+    return s.device().seek(pos, which);
+}
+template <typename Stream>
+nonstd::expected<streampos, failure> seek(Stream& s,
+                                          streamoff off,
+                                          seekdir dir,
+                                          inout which = in | out)
+{
+    return s.device().seek(off, dir, which);
+}
+template <typename Stream>
+nonstd::expected<streampos, failure> tell(Stream& s, inout which = in | out)
+{
+    return seek(s, 0, seekdir::cur, which);
 }
 
 SPIO_END_NAMESPACE

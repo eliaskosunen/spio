@@ -41,126 +41,127 @@ struct deadline {
 };
 
 namespace detail {
-template <typename Handle>
-class afio_device {
-public:
-    using afio_buffer_type = typename Handle::buffer_type;
-    using const_afio_buffer_type = typename Handle::const_buffer_type;
+    template <typename Handle>
+    class afio_device {
+    public:
+        using afio_buffer_type = typename Handle::buffer_type;
+        using const_afio_buffer_type = typename Handle::const_buffer_type;
 
-    using afio_request_type =
-        typename Handle::template io_request<afio::span<afio_buffer_type>>;
-    using const_afio_request_type = typename Handle::template io_request<
-        afio::span<const_afio_buffer_type>>;
+        using afio_request_type =
+            typename Handle::template io_request<afio::span<afio_buffer_type>>;
+        using const_afio_request_type = typename Handle::template io_request<
+            afio::span<const_afio_buffer_type>>;
 
-    using buffer_type = gsl::span<gsl::byte>;
-    using const_buffer_type = gsl::span<const gsl::byte>;
+        using buffer_type = gsl::span<gsl::byte>;
+        using const_buffer_type = gsl::span<const gsl::byte>;
 
-    constexpr afio_device() = default;
-    afio_device(Handle& h) : m_handle(std::addressof(h)) {}
+        constexpr afio_device() = default;
+        afio_device(Handle& h) : m_handle(std::addressof(h)) {}
 
-    Handle* handle() noexcept
-    {
-        return m_handle;
-    }
-    const Handle* handle() const noexcept
-    {
-        return m_handle;
-    }
-
-    bool is_open() const
-    {
-        return m_handle != nullptr;
-    }
-    void close()
-    {
-        Expects(m_handle);
-        m_handle->close();
-    }
-
-    nonstd::expected<afio::span<afio_buffer_type>, failure> afio_read(
-        afio_request_type reqs)
-    {
-        Expects(m_handle);
-        Expects(!reqs.buffers.empty());
-
-        auto ret = afio::read(*handle(), reqs);
-        if (ret.has_error()) {
-            return nonstd::make_unexpected(make_error_code(ret.error()));
+        Handle* handle() noexcept
+        {
+            return m_handle;
         }
-        return ret.value();
-    }
-    nonstd::expected<gsl::span<buffer_type>, failure> vread(
-        gsl::span<buffer_type> bufs,
-        streampos pos = 0)
-    {
-        Expects(!bufs.empty());
-
-        static afio_buffer_type dummy;
-        afio::span<afio_buffer_type> list(&dummy, bufs.size());
-        std::transform(
-            bufs.begin(), bufs.end(), list.begin(),
-            [](buffer_type& b) -> afio_buffer_type {
-                return {reinterpret_cast<afio::byte*>(b.data()), b.size()};
-            });
-
-        auto ret =
-            afio_read({list, static_cast<typename Handle::extent_type>(pos)});
-        if (!ret) {
-            return nonstd::make_unexpected(ret.error());
+        const Handle* handle() const noexcept
+        {
+            return m_handle;
         }
 
-        std::transform(ret->begin(), ret->end(), bufs.begin(),
-                       [](afio_buffer_type& b) -> buffer_type {
-                           return {reinterpret_cast<gsl::byte*>(b.data), b.len};
-                       });
-        return bufs;
-    }
-
-    nonstd::expected<afio::span<const_afio_buffer_type>, failure> afio_write(
-        typename Handle::template io_request<afio::span<const_afio_buffer_type>>
-            reqs)
-    {
-        Expects(m_handle);
-        Expects(!reqs.buffers.empty());
-
-        auto ret = afio::write(*handle(), reqs);
-        if (ret.has_error()) {
-            return nonstd::make_unexpected(make_error_code(ret.error()));
+        bool is_open() const
+        {
+            return m_handle != nullptr;
         }
-        return ret.value();
-    }
-    nonstd::expected<gsl::span<const_buffer_type>, failure> vwrite(
-        gsl::span<const_buffer_type> bufs,
-        streampos pos = 0)
-    {
-        Expects(!bufs.empty());
-
-        static const_afio_buffer_type dummy;
-        afio::span<const_afio_buffer_type> list(&dummy, bufs.size());
-        std::transform(bufs.begin(), bufs.end(), list.begin(),
-                       [](const_buffer_type& b) -> const_afio_buffer_type {
-                           return {
-                               reinterpret_cast<const afio::byte*>(b.data()),
-                               b.size()};
-                       });
-
-        auto ret =
-            afio_write({list, static_cast<typename Handle::extent_type>(pos)});
-        if (!ret) {
-            return nonstd::make_unexpected(ret.error());
+        void close()
+        {
+            Expects(m_handle);
+            m_handle->close();
         }
 
-        std::transform(
-            ret->begin(), ret->end(), bufs.begin(),
-            [](const_afio_buffer_type& b) -> const_buffer_type {
-                return {reinterpret_cast<const gsl::byte*>(b.data), b.len};
-            });
-        return bufs;
-    }
+        nonstd::expected<afio::span<afio_buffer_type>, failure> afio_read(
+            afio_request_type reqs)
+        {
+            Expects(m_handle);
+            Expects(!reqs.buffers.empty());
 
-private:
-    Handle* m_handle{nullptr};
-};
+            auto ret = afio::read(*handle(), reqs);
+            if (ret.has_error()) {
+                return nonstd::make_unexpected(make_error_code(ret.error()));
+            }
+            return ret.value();
+        }
+        nonstd::expected<gsl::span<buffer_type>, failure> vread(
+            gsl::span<buffer_type> bufs,
+            streampos pos = 0)
+        {
+            Expects(!bufs.empty());
+
+            afio_buffer_type dummy;
+            afio::span<afio_buffer_type> list(&dummy, bufs.size());
+            std::transform(
+                bufs.begin(), bufs.end(), list.begin(),
+                [](buffer_type& b) -> afio_buffer_type {
+                    return {reinterpret_cast<afio::byte*>(b.data()), b.size()};
+                });
+
+            auto ret = afio_read(
+                {list, static_cast<typename Handle::extent_type>(pos)});
+            if (!ret) {
+                return nonstd::make_unexpected(ret.error());
+            }
+
+            std::transform(
+                ret->begin(), ret->end(), bufs.begin(),
+                [](afio_buffer_type& b) -> buffer_type {
+                    return {reinterpret_cast<gsl::byte*>(b.data), b.len};
+                });
+            return bufs;
+        }
+
+        nonstd::expected<afio::span<const_afio_buffer_type>, failure>
+        afio_write(typename Handle::template io_request<
+                   afio::span<const_afio_buffer_type>> reqs)
+        {
+            Expects(m_handle);
+            Expects(!reqs.buffers.empty());
+
+            auto ret = afio::write(*handle(), reqs);
+            if (ret.has_error()) {
+                return nonstd::make_unexpected(make_error_code(ret.error()));
+            }
+            return ret.value();
+        }
+        nonstd::expected<gsl::span<const_buffer_type>, failure> vwrite(
+            gsl::span<const_buffer_type> bufs,
+            streampos pos = 0)
+        {
+            Expects(!bufs.empty());
+
+            const_afio_buffer_type dummy;
+            afio::span<const_afio_buffer_type> list(&dummy, bufs.size());
+            std::transform(
+                bufs.begin(), bufs.end(), list.begin(),
+                [](const_buffer_type& b) -> const_afio_buffer_type {
+                    return {reinterpret_cast<const afio::byte*>(b.data()),
+                            b.size()};
+                });
+
+            auto ret = afio_write(
+                {list, static_cast<typename Handle::extent_type>(pos)});
+            if (!ret) {
+                return nonstd::make_unexpected(ret.error());
+            }
+
+            std::transform(
+                ret->begin(), ret->end(), bufs.begin(),
+                [](const_afio_buffer_type& b) -> const_buffer_type {
+                    return {reinterpret_cast<const gsl::byte*>(b.data), b.len};
+                });
+            return bufs;
+        }
+
+    private:
+        Handle* m_handle{nullptr};
+    };
 }  // namespace detail
 
 class afio_io_device : public detail::afio_device<afio::io_handle> {

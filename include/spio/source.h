@@ -173,7 +173,8 @@ public:
     result putback(gsl::span<gsl::byte> s)
     {
         if (s.size() > free_space()) {
-            return make_result(m_buffer.write_tail(s), out_of_memory);
+            return make_result(m_buffer.write_tail(s.first(free_space())),
+                               out_of_memory);
         }
         return m_buffer.write_tail(s);
     }
