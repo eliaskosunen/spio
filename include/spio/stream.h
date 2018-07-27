@@ -169,6 +169,7 @@ public:
     using input_base = detail::input_stream_base<Device>;
     using output_base = detail::output_stream_base<Device, typename Char::type>;
 
+    using character_type = Char;
     using char_type = typename Char::type;
     using chain_type = typename Char::template apply_filters<Chain>;
     using device_type = Device;
@@ -341,14 +342,18 @@ result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
 }
 
 template <typename Stream>
-result get(Stream& s, gsl::byte& data, bool& eof)
+result get(Stream& s, gsl::byte& data)
 {
+    bool eof = false;
     auto r = s.device().get(data, eof);
     if (r.has_error()) {
         if (r.value() == 1) {
             putback(s, data);
         }
         return make_result(0, r.error());
+    }
+    if (eof) {
+        s.set_eof();
     }
     r = s.chain().get(data);
     if (r.has_error()) {
@@ -362,15 +367,15 @@ result get(Stream& s, gsl::byte& data, bool& eof)
 
 template <typename Stream>
 auto putback(Stream& s, gsl::span<const gsl::byte> d) ->
-    typename std::enable_if<is_writable<Stream>::value, bool>::type
+    typename std::enable_if<is_readable<Stream>::value, bool>::type
 {
     s.clear_eof();
     return s.source().putback(d);
 }
 template <typename Stream>
 auto putback(Stream& s, gsl::byte d) ->
-    typename std::enable_if<is_byte_writable<Stream>::value &&
-                                !is_writable<Stream>::value,
+    typename std::enable_if<is_byte_readable<Stream>::value &&
+                                !is_readable<Stream>::value,
                             bool>::type
 {
     s.clear_eof();
@@ -397,6 +402,42 @@ nonstd::expected<streampos, failure> tell(Stream& s, inout which = in | out)
 {
     return seek(s, 0, seekdir::cur, which);
 }
+
+template <typename Stream>
+using is_writable_stream = is_writable<typename Stream::device_type>;
+template <typename Stream>
+using is_random_access_writable_stream =
+    is_random_access_writable<typename Stream::device_type>;
+template <typename Stream>
+using is_byte_writable_stream = is_byte_writable<typename Stream::device_type>;
+
+template <typename Stream>
+using is_flushable_stream = is_writable<typename Stream::device_type>;
+template <typename Stream>
+using is_syncable_stream = is_syncable<typename Stream::device_type>;
+
+template <typename Stream>
+using is_readable_stream = is_readable<typename Stream::device_type>;
+template <typename Stream>
+using is_random_access_readable_stream =
+    is_random_access_readable<typename Stream::device_type>;
+template <typename Stream>
+using is_byte_readable_stream = is_byte_readable<typename Stream::device_type>;
+
+template <typename Stream>
+using is_putbackable_span_stream = is_readable_stream<Stream>;
+template <typename Stream>
+using is_putbackable_byte_stream =
+    conjunction<is_byte_readable_stream<Stream>,
+                negation<is_putbackable_span_stream<Stream>>>;
+
+template <typename Stream>
+using is_absolute_seekable_stream = is_detected<absolute_seekable_op, Stream>;
+template <typename Stream>
+using is_relative_seekable_stream = is_detected<relative_seekable_op, Stream>;
+
+template <typename Stream>
+using is_tellable_stream = is_seekable<typename Stream::device_type>;
 
 SPIO_END_NAMESPACE
 

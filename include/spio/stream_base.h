@@ -45,7 +45,7 @@ public:
     {
         return m_flags[1];
     }
-    virtual operator bool() const noexcept
+    virtual explicit operator bool() const noexcept
     {
         return bad();
     }

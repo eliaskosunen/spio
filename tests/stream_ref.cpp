@@ -18,31 +18,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef SPIO_SPIO_H
-#define SPIO_SPIO_H
+#include <spio/spio.h>
+#include "doctest.h"
 
-#include "config.h"
-
-#include "ring.h"
-#include "string_view.h"
-#include "util.h"
-
-#include "container_device.h"
-#include "memory_device.h"
-#include "stdio_device.h"
-
-#if SPIO_USE_AFIO
-#include "afio_device.h"
-#endif
-
-#include "sink.h"
-#include "source.h"
-
-#include "device_stream.h"
-#include "filter.h"
-#include "formatter.h"
-#include "stream.h"
-#include "stream_base.h"
-#include "stream_ref.h"
-
-#endif  // SPIO_SPIO_H
+TEST_CASE("stream_ref")
+{
+    std::vector<gsl::byte> buf(12);
+    spio::memory_sink sink(buf);
+    using stream_type = spio::stream<spio::memory_sink, spio::character<char>,
+                                     spio::sink_filter_chain>;
+    stream_type stream(sink, stream_type::input_base{},
+                       stream_type::output_base{}, stream_type::chain_type{});
+    spio::basic_stream_ref<spio::character<char>,
+                           spio::random_access_writable_tag>
+        ref(stream);
+    const auto str = "Hello world!";
+    spio::write_at(ref, gsl::as_bytes(gsl::make_span(str, strlen(str))), 0);
+    CHECK_EQ(std::memcmp(str, stream.device().output().data(), strlen(str)), 0);
+}

@@ -36,6 +36,7 @@
 #if SPIO_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdocumentation-unknown-command"
+#pragma clang diagnostic ignored "-Wsign-conversion"
 #pragma clang diagnostic ignored "-Wswitch-enum"
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 #pragma clang diagnostic ignored "-Wweak-vtables"
