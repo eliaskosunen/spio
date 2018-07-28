@@ -20,239 +20,121 @@
 
 #include "config.h"
 
-#include "stream.h"
+#include "stream_ref.h"
 
 SPIO_BEGIN_NAMESPACE
 
-struct readable_scan_tag {
+// Scan char-by-char and putback the final char
+// For byte_readable, but can be used by readable
+struct scan_char_strategy {
 };
-struct char_readable_scan_tag {
+// Scan as much as possible at once and putback extra bytes
+// For readable
+struct scan_bulk_strategy {
 };
-struct random_access_readable_scan_tag {
+// Scan as much as possible at once but don't putback extra bytes
+// For random_access_readable
+struct scan_bulk_nopb_strategy {
 };
 
-template <typename CharT, typename T, typename Enable = void>
-result custom_scan(readable_scan_tag,
-                   std::function<result(gsl::span<CharT>)>&,
+template <typename CharT, typename T>
+result custom_scan(T&,
+                   scan_char_strategy,
                    const CharT*&,
-                   T&);
-template <typename CharT, typename T, typename Enable = void>
-result custom_scan(char_readable_scan_tag,
                    std::function<result(CharT&)>&,
+                   std::function<bool(CharT)>&);
+template <typename CharT, typename T>
+result custom_scan(T&,
+                   scan_bulk_strategy,
                    const CharT*&,
-                   T&);
-template <typename CharT, typename T, typename Enable = void>
-result custom_scan(random_access_readable_scan_tag,
-                   std::function<result(gsl::span<CharT>, streampos)>&,
-                   streampos,
+                   std::function<result(gsl::span<gsl::byte>)>&,
+                   std::function<bool(gsl::span<gsl::byte>)>&);
+template <typename CharT, typename T>
+result custom_scan(T&,
+                   scan_bulk_nopb_strategy,
                    const CharT*&,
-                   T&);
+                   std::function<result(gsl::span<gsl::byte>)>&);
 
-namespace detail {
-    template <typename CharT>
-    struct basic_arg {
-        using scanner_fn_type = nonstd::expected<void, failure> (*)(
-            std::function<result(gsl::span<CharT>)>&,
-            const CharT*&,
-            void*);
+template <typename CharT, typename Strategy>
+struct basic_arg;
 
-        void* value;
-        scanner_fn_type scan;
-    };
-    template <typename CharT>
-    struct basic_char_arg {
-        using scanner_fn_type =
-            nonstd::expected<void, failure> (*)(std::function<result(CharT&)>&,
-                                                const CharT*&,
-                                                void*);
+template <typename CharT>
+struct basic_arg<CharT, scan_char_strategy> {
+    using fn_type =
+        nonstd::expected<void, failure> (*)(const CharT*&,
+                                            std::function<result(CharT&)>&,
+                                            std::function<bool(CharT)>&,
+                                            void*);
 
-        void* value;
-        scanner_fn_type scan;
-    };
-    template <typename CharT>
-    struct basic_random_access_arg {
-        using scanner_fn_type = nonstd::expected<void, failure> (*)(
-            std::function<result(gsl::span<CharT>, streampos)>&,
-            streampos,
-            const CharT*&,
-            void*);
+    void* value;
+    fn_type scan;
+};
+template <typename CharT>
+struct basic_arg<CharT, scan_bulk_strategy> {
+    using fn_type = nonstd::expected<void, failure> (*)(
+        const CharT*&,
+        std::function<result(gsl::span<gsl::byte>)>&,
+        std::function<bool(gsl::span<gsl::byte>)>&,
+        void*);
 
-        void* value;
-        scanner_fn_type scan;
-    };
+    void* value;
+    fn_type scan;
+};
+template <typename CharT>
+struct basic_arg<CharT, scan_bulk_nopb_strategy> {
+    using fn_type = nonstd::expected<void, failure> (*)(
+        const CharT*&,
+        std::function<result(gsl::span<gsl::byte>)>&,
+        void*);
 
-    template <typename Stream,
-              typename Arg,
-              typename Allocator = std::allocator<Arg>>
-    class basic_arg_list {
-    public:
-        using stream_type = Stream;
-        using arg_type = Arg;
-        using allocator_type = Allocator;
+    void* value;
+    fn_type scan;
+};
 
-        using storage_type = std::vector<arg_type, allocator_type>;
+template <typename Arg, typename Allocator = std::allocator<Arg>>
+using basic_arg_list = std::vector<Arg*, Allocator>;
 
-        basic_arg_list(storage_type v) : m_vec(std::move(v)) {}
-        basic_arg_list(std::initializer_list<arg_type> i,
-                       const Allocator& a = Allocator())
-            : m_vec(i, a)
-        {
-        }
-
-        arg_type& operator[](std::size_t i) &
-        {
-            return m_vec[i];
-        }
-        const arg_type& operator[](std::size_t i) const&
-        {
-            return m_vec[i];
-        }
-        arg_type&& operator[](std::size_t i) &&
-        {
-            return std::move(m_vec[i]);
-        }
-
-        storage_type& get() &
-        {
-            return m_vec;
-        }
-        const storage_type& get() const&
-        {
-            return m_vec;
-        }
-        storage_type&& get() &&
-        {
-            return m_vec;
-        }
-
-    private:
-        storage_type m_vec;
-    };
-
-    template <typename CharT>
-    nonstd::expected<void, failure> skip_format(const CharT*& f)
-    {
-        if (*f == 0) {
-            return {};
-        }
-        if (*f != CharT('}')) {
-            return nonstd::make_unexpected(
-                failure{std::make_error_code(std::errc::invalid_argument),
-                        "Invalid format string: expected '}'"});
-        }
-        ++f;
+template <typename CharT>
+nonstd::expected<void, failure> skip_format(const CharT*& f)
+{
+    if (*f == 0) {
         return {};
     }
+    if (*f != CharT('}')) {
+        return nonstd::make_unexpected(
+            failure{std::make_error_code(std::errc::invalid_argument),
+                    "Invalid format string: expected '}'"});
+    }
+    ++f;
+    return {};
+}
 
-    template <typename CharT, typename T, typename = void>
-    struct do_scan {
-        static nonstd::expected<void, failure> scan(
-            std::function<result(gsl::span<CharT>)>& s,
-            CharT*& format,
-            void* data)
-        {
-            T& val = *reinterpret_cast<T*>(data);
-            auto ret = custom_scan(readable_scan_tag{}, s, format, val);
-            if (!ret) {
-                return nonstd::make_unexpected(ret.error());
-            }
-            return {};
-        }
-        static nonstd::expected<void, failure>
-        scan(std::function<result(CharT&)>& s, CharT*& format, void* data)
-        {
-            T& val = *reinterpret_cast<T*>(data);
-            auto ret = custom_scan(char_readable_scan_tag{}, s, format, val);
-            if (!ret) {
-                return nonstd::make_unexpected(ret.error());
-            }
-            return {};
-        }
-        static nonstd::expected<void, failure> scan(
-            std::function<result(gsl::span<CharT>, streampos)>& s,
-            streampos pos,
-            CharT*& format,
-            void* data)
-        {
-            T& val = *reinterpret_cast<T*>(data);
-            auto ret = custom_scan(random_access_readable_scan_tag{}, s, pos,
-                                   format, val);
-            if (!ret) {
-                return nonstd::make_unexpected(ret.error());
-            }
-            return {};
-        }
-    };
+template <typename CharT, typename Strategy>
+struct basic_scanner;
 
-    template <typename CharT, typename T>
-    struct do_scan<
-        CharT,
-        T,
-        typename std::enable_if<
-            std::is_same<typename std::decay<T>::type, CharT>::value>::type> {
-        static nonstd::expected<void, failure> scan(
-            std::function<result(gsl::span<CharT>)>& s,
-            const CharT*& format,
-            void* data)
-        {
-            T& ch = *reinterpret_cast<CharT*>(data);
-            auto ret = s(gsl::make_span(std::addressof(ch), 1));
-            skip_format(format);
-            if (ret.value() == 1 && !ret.has_error()) {
-                return {};
-            }
-            return nonstd::make_unexpected(ret.error());
-        }
-        static nonstd::expected<void, failure>
-        scan(std::function<result(CharT&)>& s, const CharT*& format, void* data)
-        {
-            T& ch = *reinterpret_cast<CharT*>(data);
-            auto ret = s(ch);
-            skip_format(format);
-            if (ret.value() == 1 && !ret.has_error()) {
-                return {};
-            }
-            return nonstd::make_unexpected(ret.error());
-        }
-        static nonstd::expected<void, failure> scan(
-            std::function<result(gsl::span<CharT>, streampos)>& s,
-            streampos pos,
-            const CharT*& format,
-            void* data)
-        {
-            T& ch = *reinterpret_cast<CharT*>(data);
-            auto ret = s(gsl::make_span(std::addressof(ch), 1), pos);
-            skip_format(format);
-            if (ret.value() == 1 && !ret.has_error()) {
-                return {};
-            }
-            return nonstd::make_unexpected(ret.error());
-        }
-    };
-
-    template <typename CharT, typename T>
-    struct do_scan<
-        CharT,
-        gsl::span<T>,
-        typename std::enable_if<
-            std::is_same<typename std::decay<T>::type, CharT>::value>::type> {
-        static nonstd::expected<void, failure> scan(
-            std::function<result(gsl::span<CharT>)>& s,
-            const CharT*& format,
-            void* data)
-        {
-            auto val = *reinterpret_cast<gsl::span<T>*>(data);
-            if (val.size() == 0) {
-                return s;
-            }
-
-            const bool read_till_ws = *format == CharT('w');
-            if (read_till_ws) {
-                ++format;
-            }
-        }
-    };
-}  // namespace detail
+template <typename CharT>
+struct basic_scanner<CharT, scan_char_strategy> {
+    nonstd::expected<void, failure> operator()(
+        basic_string_view<CharT> f,
+        std::function<result(gsl::byte&)>& r,
+        std::function<bool(gsl::byte)>& pb,
+        basic_arg_list<basic_arg<CharT, scan_char_strategy>*> a);
+};
+template <typename CharT>
+struct basic_scanner<CharT, scan_bulk_strategy> {
+    nonstd::expected<void, failure> operator()(
+        basic_string_view<CharT> f,
+        std::function<result(gsl::span<gsl::byte>)>& r,
+        std::function<bool(gsl::span<gsl::byte>)>& pb,
+        basic_arg_list<basic_arg<CharT, scan_bulk_strategy>*> a);
+};
+template <typename CharT>
+struct basic_scanner<CharT, scan_bulk_nopb_strategy> {
+    nonstd::expected<void, failure> operator()(
+        basic_string_view<CharT> f,
+        std::function<result(gsl::span<gsl::byte>)>& r,
+        basic_arg_list<basic_arg<CharT, scan_bulk_nopb_strategy>*> a);
+};
 
 SPIO_END_NAMESPACE
 

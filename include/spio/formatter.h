@@ -22,6 +22,7 @@
 
 #include "device.h"
 #include "result.h"
+#include "stream_base.h"
 #include "string_view.h"
 #include "third_party/fmt.h"
 #include "util.h"
@@ -30,43 +31,49 @@ SPIO_BEGIN_NAMESPACE
 
 template <typename CharT>
 struct basic_formatter {
-    template <typename OutputIt, typename... Args>
-    OutputIt operator()(OutputIt it,
-                        basic_string_view<CharT> f,
-                        const Args&... a)
+    template <typename OutputIt>
+    OutputIt operator()(
+        OutputIt it,
+        basic_string_view<CharT> f,
+        fmt::basic_format_args<
+            typename fmt::format_context_t<OutputIt, CharT>::type> a)
     {
-        return fmt::format_to(it,
-                              fmt::basic_string_view<CharT>(
-                                  f.data(), static_cast<size_t>(f.size())),
-                              a...);
+        return fmt::vformat_to(it,
+                               fmt::basic_string_view<CharT>(
+                                   f.data(), static_cast<size_t>(f.size())),
+                               a);
     }
 };
 
 template <typename Stream, typename... Args>
 auto print(Stream& s,
            basic_string_view<typename Stream::char_type> f,
-           const Args&... a) ->
-    typename std::enable_if<is_writable<typename Stream::device_type>::value,
-                            result>::type
+           const Args&... a)
+    -> decltype(write(std::declval<Stream&>(),
+                      std::declval<std::vector<gsl::byte>>()),
+                result())
 {
     std::vector<gsl::byte> buf;
-    s.formatter()(memcpy_back_insert_iterator<std::vector<gsl::byte>,
-                                              typename Stream::char_type>(buf),
-                  f, a...);
-    return write(s, buf);
+    using iterator = memcpy_back_insert_iterator<std::vector<gsl::byte>,
+                                                 typename Stream::char_type>;
+    get_formatter(s)(iterator(buf), f,
+                     fmt::make_format_args<typename fmt::format_context_t<
+                         iterator, typename Stream::char_type>::type>(a...));
+    return write(s, std::move(buf));
 }
 template <typename Stream, typename... Args>
 auto print(Stream& s,
            basic_string_view<typename Stream::char_type> f,
-           const Args&... a) ->
-    typename std::enable_if<
-        is_byte_writable<typename Stream::device_type>::value,
-        result>::type
+           const Args&... a)
+    -> decltype(write(std::declval<Stream&>(), std::declval<gsl::byte>()),
+                result())
 {
     std::vector<gsl::byte> buf;
-    s.formatter()(memcpy_back_insert_iterator<std::vector<gsl::byte>,
-                                              typename Stream::char_type>(buf),
-                  f, a...);
+    using iterator = memcpy_back_insert_iterator<std::vector<gsl::byte>,
+                                                 typename Stream::char_type>;
+    get_formatter(s)(iterator(buf), f,
+                     fmt::make_format_args<typename fmt::format_context_t<
+                         iterator, typename Stream::char_type>::type>(a...));
     auto r = result{0};
     for (auto& ch : buf) {
         auto tmp = put(s, ch);
@@ -75,22 +82,25 @@ auto print(Stream& s,
         }
         ++r.value();
     }
-    return write(s, buf);
+    return r;
 }
 template <typename Stream, typename... Args>
 auto print_at(Stream& s,
               streampos pos,
               basic_string_view<typename Stream::char_type> f,
-              const Args&... a) ->
-    typename std::enable_if<
-        is_random_access_writable<typename Stream::device_type>::value,
-        result>::type
+              const Args&... a)
+    -> decltype(write_at(std::declval<Stream&>(),
+                         std::declval<std::vector<gsl::byte>>(),
+                         std::declval<streampos>()),
+                result())
 {
     std::vector<gsl::byte> buf;
-    s.formatter()(memcpy_back_insert_iterator<std::vector<gsl::byte>,
-                                              typename Stream::char_type>(buf),
-                  f, a...);
-    return write_at(s, buf, pos);
+    using iterator = memcpy_back_insert_iterator<std::vector<gsl::byte>,
+                                                 typename Stream::char_type>;
+    get_formatter(s)(iterator(buf), f,
+                     fmt::make_format_args<typename fmt::format_context_t<
+                         iterator, typename Stream::char_type>::type>(a...));
+    return write_at(s, std::move(buf), pos);
 }
 
 SPIO_END_NAMESPACE

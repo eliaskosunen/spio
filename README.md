@@ -7,6 +7,30 @@
 ![C++ Standard](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17-blue.svg)
 ![License](https://img.shields.io/github/license/eliaskosunen/spio.svg)
 
+## About
+
+Standard IO facilities provided by C++ are very bad.
+There's `<cstdio>` inherited from C, that doesn't provide type safety and user extensibility, and has an unintuitive mini-language built into it.
+Then there's the more "modern" alternative: `<iostream>`, which is too slow for any real-world use and has an hard-to-use API.
+
+This library attempts to be a new high-level IO library to explore different design choices with C++ from this decade and provide ideas
+and tried-out designs for people smarter than me for standardization.
+
+## Hello world example
+
+```cpp
+#include <spio/spio.h>
+
+int main()
+{
+    // Line-buffered stream to stdout
+    spio::stdio_handle_outstream out(stdout, spio::buffer_mode::line);
+    // Write with fmtlib
+    spio::print(out, "Hello {}!\n", "world");
+    // Prints "Hello world!"
+}
+```
+
 ## License
 
 spio is licensed under the Apache License 2.0. See LICENSE for details.

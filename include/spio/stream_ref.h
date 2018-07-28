@@ -29,7 +29,7 @@ namespace detail {
     struct erased_stream_storage_base {
         virtual bool bad() const = 0;
         virtual bool eof() const = 0;
-        virtual explicit operator bool() const = 0;
+        virtual operator bool() const = 0;
         bool operator!() const
         {
             return !operator bool();
@@ -97,7 +97,7 @@ namespace detail {
         {
             return m_stream.eof();
         }
-        explicit operator bool() const override
+        operator bool() const override
         {
             return m_stream.operator bool();
         }
@@ -509,46 +509,6 @@ namespace detail {
     };
 }  // namespace detail
 
-struct any_tag {
-};
-
-struct sink_tag : virtual any_tag {
-};
-struct writable_tag : sink_tag {
-};
-struct random_access_writable_tag : sink_tag {
-};
-struct byte_writable_tag : sink_tag {
-};
-
-struct flushable_tag : virtual any_tag {
-};
-struct syncable_tag : virtual any_tag {
-};
-
-struct source_tag : virtual any_tag {
-};
-struct readable_tag : source_tag {
-};
-struct random_access_readable_tag : source_tag {
-};
-struct byte_readable_tag : source_tag {
-};
-
-struct putbackable_span_tag : virtual any_tag {
-};
-struct putbackable_byte_tag : virtual any_tag {
-};
-
-struct absolute_seekable_tag : virtual any_tag {
-};
-struct relative_seekable_tag : virtual any_tag {
-};
-struct seekable_tag : absolute_seekable_tag, relative_seekable_tag {
-};
-struct tellable_tag : virtual any_tag {
-};
-
 namespace detail {
     template <typename T, typename Tag>
     using has_tag = disjunction<std::is_same<Tag, T>, std::is_base_of<Tag, T>>;
@@ -620,6 +580,7 @@ class basic_stream_ref {
 public:
     using character_type = Char;
     using char_type = typename Char::type;
+    using properties = Properties;
 
     basic_stream_ref() = default;
     template <typename Stream,
@@ -681,6 +642,26 @@ private:
     erased_stream m_stream;
 };
 
+template <typename Device, typename Char, template <typename...> class Chain>
+result stream<Device, Char, Chain>::output_sentry::_handle_tied(
+    stream<Device, Char, Chain>& s)
+{
+    if (s.tie()) {
+        return flush(*s.tie());
+    }
+    return {};
+}
+
+template <typename Device, typename Char, template <typename...> class Chain>
+result stream<Device, Char, Chain>::input_sentry::_handle_tied(
+    stream<Device, Char, Chain>& s)
+{
+    if (s.tie()) {
+        return flush(*s.tie());
+    }
+    return {};
+}
+
 template <typename Char, typename Properties>
 auto write(basic_stream_ref<Char, Properties>& s, std::vector<gsl::byte> buf) ->
     typename std::enable_if<detail::has_tag<Properties, writable_tag>::value,
@@ -725,6 +706,13 @@ auto put(basic_stream_ref<Char, Properties>& s, gsl::byte data) ->
         result>::type
 {
     return s->put(data);
+}
+
+template <typename Char, typename Properties>
+basic_formatter<typename Char::type> get_formatter(
+    basic_stream_ref<Char, Properties>& s)
+{
+    return s->formatter();
 }
 
 template <typename Char, typename Properties>

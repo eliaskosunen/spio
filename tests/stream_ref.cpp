@@ -20,16 +20,18 @@
 
 TEST_CASE("stream_ref")
 {
-    std::vector<gsl::byte> buf(12);
-    spio::memory_sink sink(buf);
-    using stream_type = spio::stream<spio::memory_sink, spio::character<char>,
-                                     spio::sink_filter_chain>;
-    stream_type stream(sink, stream_type::input_base{},
-                       stream_type::output_base{}, stream_type::chain_type{});
+    std::vector<gsl::byte> buf(24);
+    spio::memory_outstream stream(buf);
     spio::basic_stream_ref<spio::character<char>,
                            spio::random_access_writable_tag>
         ref(stream);
     const auto str = "Hello world!";
-    spio::write_at(ref, gsl::as_bytes(gsl::make_span(str, strlen(str))), 0);
+    auto ret =
+        spio::write_at(ref, gsl::as_bytes(gsl::make_span(str, strlen(str))), 0);
+    CHECK(!ret.has_error());
     CHECK_EQ(std::memcmp(str, stream.device().output().data(), strlen(str)), 0);
+    ret = spio::print_at(ref, 12, str);
+    CHECK(!ret.has_error());
+    CHECK_EQ(
+        std::memcmp(str, stream.device().output().data() + 12, strlen(str)), 0);
 }

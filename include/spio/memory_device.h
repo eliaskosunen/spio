@@ -113,6 +113,7 @@ public:
     using base::is_open;
     using base::output;
     using base::read_at;
+    using base::span_type;
     using base::write_at;
 };
 
@@ -125,6 +126,7 @@ public:
     using base::extent;
     using base::is_open;
     using base::output;
+    using base::span_type;
     using base::write_at;
 };
 
@@ -138,6 +140,7 @@ public:
     using base::input;
     using base::is_open;
     using base::read_at;
+    using base::span_type;
 };
 
 SPIO_END_NAMESPACE

@@ -38,8 +38,10 @@
 #include "device_stream.h"
 #include "filter.h"
 #include "formatter.h"
+#include "scanner.h"
 #include "stream.h"
 #include "stream_base.h"
+#include "stream_operations.h"
 #include "stream_ref.h"
 
 #endif  // SPIO_SPIO_H

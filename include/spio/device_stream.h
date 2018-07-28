@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "memory_device.h"
 #include "stdio_device.h"
 #include "stream.h"
 
@@ -267,6 +268,77 @@ using stdio_handle_iostream = basic_stdio_handle_iostream<character<char>>;
 using stdio_instream = basic_stdio_instream<character<char>>;
 using stdio_outstream = basic_stdio_outstream<character<char>>;
 using stdio_iostream = basic_stdio_iostream<character<char>>;
+
+template <typename... StaticFilters>
+struct memory_iostream_chain
+    : public virtual sink_filter_chain<StaticFilters...>,
+      public virtual source_filter_chain<StaticFilters...> {
+};
+
+template <typename Char>
+class basic_memory_outstream
+    : public stream<memory_sink, Char, sink_filter_chain> {
+    using base = stream<memory_sink, Char, sink_filter_chain>;
+
+public:
+    basic_memory_outstream() : base(memory_sink(), typename base::chain_type{})
+    {
+    }
+    basic_memory_outstream(memory_sink::span_type s)
+        : base(memory_sink(s), typename base::chain_type{})
+    {
+    }
+
+    memory_sink& open(memory_sink::span_type s)
+    {
+        base::device() = memory_sink(s);
+        return base::device();
+    }
+};
+template <typename Char>
+class basic_memory_instream
+    : public stream<memory_source, Char, source_filter_chain> {
+    using base = stream<memory_source, Char, source_filter_chain>;
+
+public:
+    basic_memory_instream() : base(memory_source(), typename base::chain_type{})
+    {
+    }
+    basic_memory_instream(memory_sink::span_type s)
+        : base(memory_source(s), typename base::chain_type{})
+    {
+    }
+
+    memory_source& open(memory_source::span_type s)
+    {
+        base::device() = memory_source(s);
+        return base::device();
+    }
+};
+template <typename Char>
+class basic_memory_iostream
+    : public stream<memory_device, Char, memory_iostream_chain> {
+    using base = stream<memory_device, Char, memory_iostream_chain>;
+
+public:
+    basic_memory_iostream() : base(memory_device(), typename base::chain_type{})
+    {
+    }
+    basic_memory_iostream(memory_sink::span_type s)
+        : base(memory_source(s), typename base::chain_type{})
+    {
+    }
+
+    memory_source& open(memory_device::span_type s)
+    {
+        base::device() = memory_device(s);
+        return base::device();
+    }
+};
+
+using memory_outstream = basic_memory_outstream<character<char>>;
+using memory_instream = basic_memory_instream<character<char>>;
+using memory_iostream = basic_memory_iostream<character<char>>;
 
 SPIO_END_NAMESPACE
 

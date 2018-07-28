@@ -42,9 +42,9 @@ public:
     {
         return m_flags[1];
     }
-    virtual explicit operator bool() const noexcept
+    virtual operator bool() const noexcept
     {
-        return bad();
+        return !bad();
     }
     bool operator!() const noexcept
     {
@@ -80,6 +80,82 @@ private:
 
     std::vector<bool> m_flags{_flags_init()};  // Intentional vector<bool>
 };
+
+struct any_tag {
+};
+
+struct sink_tag : virtual any_tag {
+};
+struct writable_tag : sink_tag {
+};
+struct random_access_writable_tag : sink_tag {
+};
+struct byte_writable_tag : sink_tag {
+};
+
+struct flushable_tag : virtual any_tag {
+};
+struct syncable_tag : virtual any_tag {
+};
+
+struct source_tag : virtual any_tag {
+};
+struct readable_tag : source_tag {
+};
+struct random_access_readable_tag : source_tag {
+};
+struct byte_readable_tag : source_tag {
+};
+
+struct putbackable_span_tag : virtual any_tag {
+};
+struct putbackable_byte_tag : virtual any_tag {
+};
+
+struct absolute_seekable_tag : virtual any_tag {
+};
+struct relative_seekable_tag : virtual any_tag {
+};
+struct seekable_tag : absolute_seekable_tag, relative_seekable_tag {
+};
+struct tellable_tag : virtual any_tag {
+};
+
+template <typename Stream>
+using is_writable_stream = is_writable<typename Stream::device_type>;
+template <typename Stream>
+using is_random_access_writable_stream =
+    is_random_access_writable<typename Stream::device_type>;
+template <typename Stream>
+using is_byte_writable_stream = is_byte_writable<typename Stream::device_type>;
+
+template <typename Stream>
+using is_flushable_stream = is_writable<typename Stream::device_type>;
+template <typename Stream>
+using is_syncable_stream = is_syncable<typename Stream::device_type>;
+
+template <typename Stream>
+using is_readable_stream = is_readable<typename Stream::device_type>;
+template <typename Stream>
+using is_random_access_readable_stream =
+    is_random_access_readable<typename Stream::device_type>;
+template <typename Stream>
+using is_byte_readable_stream = is_byte_readable<typename Stream::device_type>;
+
+template <typename Stream>
+using is_putbackable_span_stream = is_readable_stream<Stream>;
+template <typename Stream>
+using is_putbackable_byte_stream =
+    conjunction<is_byte_readable_stream<Stream>,
+                negation<is_putbackable_span_stream<Stream>>>;
+
+template <typename Stream>
+using is_absolute_seekable_stream = is_detected<absolute_seekable_op, Stream>;
+template <typename Stream>
+using is_relative_seekable_stream = is_detected<relative_seekable_op, Stream>;
+
+template <typename Stream>
+using is_tellable_stream = is_seekable<typename Stream::device_type>;
 
 SPIO_END_NAMESPACE
 

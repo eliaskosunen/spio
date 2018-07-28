@@ -53,7 +53,8 @@ TEST_CASE("print")
                            stream_type::output_base{},
                            stream_type::chain_type{});
 
-        spio::print_at(stream, 0, "Hello world!\n");
+        auto ret = spio::print_at(stream, 0, "Hello world!\n");
+        CHECK(!ret.has_error());
 
         CHECK_EQ(std::memcmp(buf.data(), "Hello world!\n", 12), 0);
     }

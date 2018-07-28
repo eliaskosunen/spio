@@ -35,6 +35,24 @@ struct character {
 
     template <template <typename...> class Chain>
     using apply_filters = Chain<>;
+
+    static streampos to_device(streampos pos)
+    {
+        return pos.operator streamoff() * static_cast<streamoff>(sizeof(type));
+    }
+    static streamoff to_device(streamoff off)
+    {
+        return off * static_cast<streamoff>(sizeof(type));
+    }
+
+    static streampos from_device(streampos pos)
+    {
+        return pos.operator streamoff() / static_cast<streamoff>(sizeof(type));
+    }
+    static streamoff from_device(streamoff off)
+    {
+        return off / static_cast<streamoff>(sizeof(type));
+    }
 };
 
 namespace detail {
@@ -158,6 +176,9 @@ namespace detail {
     };
 }  // namespace detail
 
+template <typename Char, typename Properties>
+class basic_stream_ref;
+
 template <typename Device, typename Char, template <typename...> class Chain>
 class stream : public stream_base,
                public detail::input_stream_base<Device>,
@@ -170,18 +191,81 @@ public:
     using char_type = typename Char::type;
     using chain_type = typename Char::template apply_filters<Chain>;
     using device_type = Device;
+    using tied_type = basic_stream_ref<Char, flushable_tag>;
 
     class output_sentry {
+    public:
         output_sentry(stream& s)
         {
-            SPIO_UNUSED(s);
+            if (!s) {
+                m_result = nonstd::make_unexpected(sentry_error);
+                s.set_bad();
+                return;
+            }
+            auto t = _handle_tied(s);
+            if (t.has_error()) {
+                m_result = nonstd::make_unexpected(t.error());
+                return;
+            }
+            if (!s) {
+                m_result = nonstd::make_unexpected(sentry_error);
+            }
         }
+
+        const failure& error() const
+        {
+            return m_result.error();
+        }
+        explicit operator bool() const
+        {
+            return m_result.operator bool();
+        }
+
+    private:
+        result _handle_tied(stream& s);
+
+        nonstd::expected<void, failure> m_result{};
     };
     class input_sentry {
-        input_sentry(stream& s)
+    public:
+        input_sentry(stream& s, bool skipws = true)
         {
-            SPIO_UNUSED(s);
+            if (!s) {
+                m_result = nonstd::make_unexpected(sentry_error);
+                s.set_bad();
+                return;
+            }
+            auto t = _handle_tied(s);
+            if (t.has_error()) {
+                m_result = nonstd::make_unexpected(t.error());
+                return;
+            }
+            if (skipws) {
+                // TODO: skipws
+                /* auto w = _skipws(s); */
+                /* if(w.has_error()) { */
+                /*     m_result = nonstd::make_unexpected(t.error()); */
+                /*     return; */
+                /* } */
+            }
+            if (!s) {
+                m_result = nonstd::make_unexpected(sentry_error);
+            }
         }
+
+        const failure& error() const
+        {
+            return m_result.error();
+        }
+        explicit operator bool() const
+        {
+            return m_result.operator bool();
+        }
+
+    private:
+        result _handle_tied(stream& s);
+
+        nonstd::expected<void, failure> m_result{};
     };
 
     stream(device_type d, input_base i, output_base o, chain_type c)
@@ -223,6 +307,17 @@ public:
         return std::move(m_device);
     }
 
+    tied_type* tie() const
+    {
+        return m_tie;
+    }
+    tied_type* tie(tied_type* s)
+    {
+        auto prev = m_tie;
+        m_tie = s;
+        return prev;
+    }
+
 protected:
     stream(device_type d, chain_type c)
         : m_chain(std::move(c)), m_device(std::move(d))
@@ -232,11 +327,16 @@ protected:
 private:
     chain_type m_chain;
     device_type m_device;
+    tied_type* m_tie{nullptr};
 };
 
 template <typename Stream>
 result write(Stream& s, std::vector<gsl::byte> buf)
 {
+    auto sentry = typename Stream::output_sentry(s);
+    if (!sentry) {
+        return make_result(0, sentry.error());
+    }
     auto r = s.chain().write(buf);
     if (r.value() < static_cast<std::ptrdiff_t>(buf.size()) || r.has_error()) {
         return r;
@@ -256,11 +356,15 @@ result write(Stream& s, gsl::span<const gsl::byte> data)
 template <typename Stream>
 result write_at(Stream& s, std::vector<gsl::byte> buf, streampos pos)
 {
+    auto sentry = typename Stream::output_sentry(s);
+    if (!sentry) {
+        return make_result(0, sentry.error());
+    }
     auto r = s.chain().write(buf);
     if (r.value() < static_cast<std::ptrdiff_t>(buf.size()) || r.has_error()) {
         return r;
     }
-    return s.device().write_at(buf, pos);
+    return s.device().write_at(buf, Stream::character_type::to_device(pos));
 }
 template <typename Stream>
 result write_at(Stream& s, gsl::span<const gsl::byte> data, streampos pos)
@@ -272,6 +376,10 @@ result write_at(Stream& s, gsl::span<const gsl::byte> data, streampos pos)
 template <typename Stream>
 result put(Stream& s, gsl::byte data)
 {
+    auto sentry = typename Stream::output_sentry(s);
+    if (!sentry) {
+        return make_result(0, sentry.error());
+    }
     auto r = s.chain().put(data);
     if (r.value() != 1 || r.has_error()) {
         return r;
@@ -280,8 +388,18 @@ result put(Stream& s, gsl::byte data)
 }
 
 template <typename Stream>
+typename Stream::formatter_type get_formatter(Stream& s)
+{
+    return s.formatter();
+}
+
+template <typename Stream>
 result flush(Stream& s)
 {
+    auto sentry = typename Stream::output_sentry(s);
+    if (!sentry) {
+        return make_result(0, sentry.error());
+    }
     return s.sink().flush();
 }
 template <typename Stream>
@@ -293,6 +411,10 @@ nonstd::expected<void, failure> sync(Stream& s)
 template <typename Stream>
 result read(Stream& s, gsl::span<gsl::byte> data)
 {
+    auto sentry = typename Stream::input_sentry(s);
+    if (!sentry) {
+        return make_result(0, sentry.error());
+    }
     bool eof = false;
     auto r = s.source().read(data, eof);
     if (r.has_error()) {
@@ -317,8 +439,13 @@ result read(Stream& s, gsl::span<gsl::byte> data)
 template <typename Stream>
 result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
 {
+    auto sentry = typename Stream::input_sentry(s);
+    if (!sentry) {
+        return make_result(0, sentry.error());
+    }
     bool eof = false;
-    auto r = s.device().read_at(data, pos, eof);
+    auto r =
+        s.device().read_at(data, Stream::character_type::to_device(pos), eof);
     if (r.has_error()) {
         putback(s, data.first(r.value()));
         return make_result(0, r.error());
@@ -341,6 +468,10 @@ result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
 template <typename Stream>
 result get(Stream& s, gsl::byte& data)
 {
+    auto sentry = typename Stream::input_sentry(s);
+    if (!sentry) {
+        return make_result(0, sentry.error());
+    }
     bool eof = false;
     auto r = s.device().get(data, eof);
     if (r.has_error()) {
@@ -367,6 +498,11 @@ auto putback(Stream& s, gsl::span<const gsl::byte> d) ->
     typename std::enable_if<is_readable<Stream>::value, bool>::type
 {
     s.clear_eof();
+    auto sentry = typename Stream::input_sentry(s);
+    if (!sentry) {
+        s.set_bad();
+        return false;
+    }
     return s.source().putback(d);
 }
 template <typename Stream>
@@ -376,6 +512,11 @@ auto putback(Stream& s, gsl::byte d) ->
                             bool>::type
 {
     s.clear_eof();
+    auto sentry = typename Stream::input_sentry(s);
+    if (!sentry) {
+        s.set_bad();
+        return false;
+    }
     return s.device().putback(d);
 }
 
@@ -384,7 +525,11 @@ nonstd::expected<streampos, failure> seek(Stream& s,
                                           streampos pos,
                                           inout which = in | out)
 {
-    return s.device().seek(pos, which);
+    auto ret = s.device().seek(Stream::character_type::to_device(pos), which);
+    if (ret) {
+        ret.value() = Stream::character_type::from_device(ret.value());
+    }
+    return ret;
 }
 template <typename Stream>
 nonstd::expected<streampos, failure> seek(Stream& s,
@@ -392,49 +537,18 @@ nonstd::expected<streampos, failure> seek(Stream& s,
                                           seekdir dir,
                                           inout which = in | out)
 {
-    return s.device().seek(off, dir, which);
+    auto ret =
+        s.device().seek(Stream::character_type::to_device(off), dir, which);
+    if (ret) {
+        ret.value() = Stream::character_type::from_device(ret.value());
+    }
+    return ret;
 }
 template <typename Stream>
 nonstd::expected<streampos, failure> tell(Stream& s, inout which = in | out)
 {
     return seek(s, 0, seekdir::cur, which);
 }
-
-template <typename Stream>
-using is_writable_stream = is_writable<typename Stream::device_type>;
-template <typename Stream>
-using is_random_access_writable_stream =
-    is_random_access_writable<typename Stream::device_type>;
-template <typename Stream>
-using is_byte_writable_stream = is_byte_writable<typename Stream::device_type>;
-
-template <typename Stream>
-using is_flushable_stream = is_writable<typename Stream::device_type>;
-template <typename Stream>
-using is_syncable_stream = is_syncable<typename Stream::device_type>;
-
-template <typename Stream>
-using is_readable_stream = is_readable<typename Stream::device_type>;
-template <typename Stream>
-using is_random_access_readable_stream =
-    is_random_access_readable<typename Stream::device_type>;
-template <typename Stream>
-using is_byte_readable_stream = is_byte_readable<typename Stream::device_type>;
-
-template <typename Stream>
-using is_putbackable_span_stream = is_readable_stream<Stream>;
-template <typename Stream>
-using is_putbackable_byte_stream =
-    conjunction<is_byte_readable_stream<Stream>,
-                negation<is_putbackable_span_stream<Stream>>>;
-
-template <typename Stream>
-using is_absolute_seekable_stream = is_detected<absolute_seekable_op, Stream>;
-template <typename Stream>
-using is_relative_seekable_stream = is_detected<relative_seekable_op, Stream>;
-
-template <typename Stream>
-using is_tellable_stream = is_seekable<typename Stream::device_type>;
 
 SPIO_END_NAMESPACE
 
