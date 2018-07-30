@@ -24,6 +24,7 @@
 #include "error.h"
 #include "third_party/optional.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename T, typename E>
@@ -33,10 +34,12 @@ public:
     using error_type = E;
     using wrapped_error_type = nonstd::optional<E>;
 
-    basic_result() = default;
-    basic_result(success_type ok) : m_ok(std::move(ok)) {}
+    SPIO_CONSTEXPR basic_result() = default;
+    SPIO_CONSTEXPR basic_result(success_type ok) noexcept : m_ok(std::move(ok))
+    {
+    }
 #if !SPIO_HAS_DEDUCTION_GUIDES
-    // ambiguous if std::optional has deduction guides
+    // ambiguous if nonstd::optional has deduction guides
     basic_result(success_type ok, error_type err)
         : m_ok(std::move(ok)), m_err(std::move(err))
     {
@@ -47,37 +50,47 @@ public:
     {
     }
 
-    success_type& value()
+    SPIO_CONSTEXPR14 success_type& value() & noexcept
     {
         return m_ok;
     }
-    const success_type& value() const
+    SPIO_CONSTEXPR const success_type& value() const& noexcept
+    {
+        return m_ok;
+    }
+    SPIO_CONSTEXPR14 success_type&& value() && noexcept
     {
         return m_ok;
     }
 
-    bool has_error() const
+    SPIO_CONSTEXPR bool has_error() const noexcept
     {
         return m_err.has_value();
     }
-    wrapped_error_type& inspect_error() noexcept
+
+    SPIO_CONSTEXPR14 wrapped_error_type& inspect_error() & noexcept
     {
         return m_err;
     }
-    const wrapped_error_type& inspect_error() const noexcept
+    SPIO_CONSTEXPR const wrapped_error_type& inspect_error() const& noexcept
     {
         return m_err;
     }
 
-    error_type& error()
+    SPIO_CONSTEXPR14 error_type& error() & noexcept
     {
         Expects(has_error());
         return *m_err;
     }
-    const error_type& error() const
+    SPIO_CONSTEXPR14 const error_type& error() const& noexcept
     {
         Expects(has_error());
         return *m_err;
+    }
+    SPIO_CONSTEXPR14 error_type&& error() && noexcept
+    {
+        Expects(has_error());
+        return *std::move(m_err);
     }
 
     template <typename T_,
@@ -101,11 +114,12 @@ private:
 
 using result = basic_result<streamsize, failure>;
 
-inline result make_result(streamsize s, failure e)
+SPIO_CONSTEXPR14 result make_result(streamsize s, failure e) noexcept
 {
     return result(s, std::move(e));
 }
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_RESULT_H

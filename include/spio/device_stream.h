@@ -24,6 +24,7 @@
 #include "stdio_device.h"
 #include "stream.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename T, typename Return = void>
@@ -33,11 +34,12 @@ public:
     using pointer = typename std::add_pointer<T>::type;
     using deleter_type = std::function<Return(pointer)>;
 
-    auto_delete() = default;
-    auto_delete(pointer ptr, const deleter_type& d) : m_ptr(ptr), m_deleter(d)
+    SPIO_CONSTEXPR auto_delete() = default;
+    SPIO_CONSTEXPR14 auto_delete(pointer ptr, const deleter_type& d) noexcept
+        : m_ptr(ptr), m_deleter(d)
     {
     }
-    auto_delete(pointer ptr, deleter_type&& d)
+    SPIO_CONSTEXPR14 auto_delete(pointer ptr, deleter_type&& d) noexcept
         : m_ptr(ptr), m_deleter(std::move(d))
     {
     }
@@ -59,38 +61,38 @@ public:
         if (m_ptr && m_deleter) {
             m_deleter(m_ptr);
         }
-        m_deleter.reset(d);
+        m_deleter = d;
     }
     void reset(deleter_type&& d)
     {
         if (m_ptr && m_deleter) {
             m_deleter(m_ptr);
         }
-        m_deleter.reset(d);
+        m_deleter = std::move(d);
     }
 
-    deleter_type& get_deleter() &
+    SPIO_CONSTEXPR14 deleter_type& get_deleter() & noexcept
     {
         return m_deleter;
     }
-    const deleter_type& get_deleter() const&
+    SPIO_CONSTEXPR const deleter_type& get_deleter() const& noexcept
     {
         return m_deleter;
     }
-    deleter_type&& get_deleter() &&
+    SPIO_CONSTEXPR14 deleter_type&& get_deleter() && noexcept
     {
         return m_deleter;
     }
 
-    pointer& get_pointer() &
+    SPIO_CONSTEXPR14 pointer& get_pointer() & noexcept
     {
         return m_ptr;
     }
-    pointer get_pointer() const&
+    SPIO_CONSTEXPR pointer get_pointer() const& noexcept
     {
         return m_ptr;
     }
-    pointer get_pointer() &&
+    SPIO_CONSTEXPR14 pointer get_pointer() && noexcept
     {
         return m_ptr;
     }
@@ -341,5 +343,6 @@ using memory_instream = basic_memory_instream<character<char>>;
 using memory_iostream = basic_memory_iostream<character<char>>;
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_DEVICE_STREAM_H

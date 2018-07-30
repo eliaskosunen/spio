@@ -22,6 +22,7 @@
 
 #include "stream_ref.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 // Scan char-by-char and putback the final char
@@ -137,5 +138,6 @@ struct basic_scanner<CharT, scan_bulk_nopb_strategy> {
 };
 
 SPIO_END_NAMESPACE
+}
 
 #endif  // SPIO_SCANNER_H

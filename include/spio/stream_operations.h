@@ -22,6 +22,7 @@
 
 #include "stream_ref.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename Stream>
@@ -106,5 +107,6 @@ result getchar_at(Stream& s, typename Stream::char_type& ch, streampos pos)
 }
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_STREAM_OPERATIONS_H

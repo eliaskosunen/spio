@@ -22,6 +22,7 @@
 
 #include "stream.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 namespace detail {
@@ -654,7 +655,7 @@ result stream<Device, Char, Chain>::output_sentry::_handle_tied(
 
 template <typename Device, typename Char, template <typename...> class Chain>
 result stream<Device, Char, Chain>::input_sentry::_handle_tied(
-    stream<Device, Char, Chain>& s)
+    stream<Device, Char, Chain>& s) 
 {
     if (s.tie()) {
         return flush(*s.tie());
@@ -806,5 +807,6 @@ auto tell(basic_stream_ref<Char, Properties>& s, inout which = in | out) ->
 }
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_STREAM_REF_H

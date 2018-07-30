@@ -29,6 +29,7 @@
 #include "third_party/gsl.h"
 #endif
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 #if SPIO_HAS_STD_STRING_VIEW
@@ -58,99 +59,99 @@ public:
 
     static SPIO_CONSTEXPR_DECL const size_type npos = size_type(-1);
 
-    SPIO_CONSTEXPR_STRICT basic_string_view() noexcept = default;
-    SPIO_CONSTEXPR_STRICT basic_string_view(const_pointer s, size_type c)
+    SPIO_CONSTEXPR basic_string_view() noexcept = default;
+    SPIO_CONSTEXPR basic_string_view(const_pointer s, size_type c)
         : m_data(s, c)
     {
     }
-    SPIO_CONSTEXPR_STRICT basic_string_view(const_pointer s)
+    SPIO_CONSTEXPR basic_string_view(const_pointer s)
         : m_data(s, static_cast<std::ptrdiff_t>(Traits::length(s)))
     {
     }
 
-    SPIO_CONSTEXPR_STRICT const_iterator begin() const noexcept
+    SPIO_CONSTEXPR const_iterator begin() const noexcept
     {
         return cbegin();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator cbegin() const noexcept
+    SPIO_CONSTEXPR const_iterator cbegin() const noexcept
     {
         return m_data.cbegin();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator end() const noexcept
+    SPIO_CONSTEXPR const_iterator end() const noexcept
     {
         return cend();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator cend() const noexcept
+    SPIO_CONSTEXPR const_iterator cend() const noexcept
     {
         return m_data.cend();
     }
 
-    SPIO_CONSTEXPR_STRICT const_iterator rbegin() const noexcept
+    SPIO_CONSTEXPR const_iterator rbegin() const noexcept
     {
         return crbegin();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator crbegin() const noexcept
+    SPIO_CONSTEXPR const_iterator crbegin() const noexcept
     {
         return m_data.crbegin();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator rend() const noexcept
+    SPIO_CONSTEXPR const_iterator rend() const noexcept
     {
         return crend();
     }
-    SPIO_CONSTEXPR_STRICT const_iterator crend() const noexcept
+    SPIO_CONSTEXPR const_iterator crend() const noexcept
     {
         return m_data.crend();
     }
 
-    SPIO_CONSTEXPR_STRICT const_reference operator[](size_type pos) const
+    SPIO_CONSTEXPR const_reference operator[](size_type pos) const
     {
         return m_data[static_cast<typename span_type::index_type>(pos)];
     }
-    SPIO_CONSTEXPR const_reference at(size_type pos) const
+    SPIO_CONSTEXPR14 const_reference at(size_type pos) const
     {
         return m_data.at(static_cast<typename span_type::index_type>(pos));
     }
 
-    SPIO_CONSTEXPR_STRICT const_reference front() const
+    SPIO_CONSTEXPR const_reference front() const
     {
         return operator[](0);
     }
-    SPIO_CONSTEXPR_STRICT const_reference back() const
+    SPIO_CONSTEXPR const_reference back() const
     {
         return operator[](size() - 1);
     }
-    SPIO_CONSTEXPR_STRICT const_pointer data() const noexcept
+    SPIO_CONSTEXPR const_pointer data() const noexcept
     {
         return m_data.data();
     }
 
-    SPIO_CONSTEXPR_STRICT size_type size() const noexcept
+    SPIO_CONSTEXPR size_type size() const noexcept
     {
         return static_cast<size_type>(m_data.size());
     }
-    SPIO_CONSTEXPR_STRICT size_type length() const noexcept
+    SPIO_CONSTEXPR size_type length() const noexcept
     {
         return size();
     }
-    SPIO_CONSTEXPR_STRICT size_type max_size() const noexcept
+    SPIO_CONSTEXPR size_type max_size() const noexcept
     {
         return std::numeric_limits<size_type>::max() - 1;
     }
-    SPIO_NODISCARD SPIO_CONSTEXPR_STRICT bool empty() const noexcept
+    SPIO_NODISCARD SPIO_CONSTEXPR bool empty() const noexcept
     {
         return size() == 0;
     }
 
-    SPIO_CONSTEXPR void remove_prefix(size_type n)
+    SPIO_CONSTEXPR14 void remove_prefix(size_type n)
     {
         m_data = m_data.subspan(n);
     }
-    SPIO_CONSTEXPR void remove_suffix(size_type n)
+    SPIO_CONSTEXPR14 void remove_suffix(size_type n)
     {
         m_data = m_data.first(size() - n);
     }
 
-    SPIO_CONSTEXPR void swap(basic_string_view& v) noexcept
+    SPIO_CONSTEXPR14 void swap(basic_string_view& v) noexcept
     {
         using std::swap;
         swap(m_data, v.m_data);
@@ -162,8 +163,8 @@ public:
         Traits::copy(dest, data() + pos, n);
         return n;
     }
-    SPIO_CONSTEXPR basic_string_view substr(size_type pos = 0,
-                                            size_type count = npos) const
+    SPIO_CONSTEXPR14 basic_string_view substr(size_type pos = 0,
+                                              size_type count = npos) const
     {
         auto n = std::min(count, size() - pos);
         return m_data.subspan(pos, n);
@@ -221,5 +222,6 @@ using u16string_view = basic_string_view<char>;
 using u32wstring_view = basic_string_view<wchar_t>;
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_STRING_VIEW_H

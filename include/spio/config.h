@@ -133,12 +133,8 @@
 
 #ifndef SPIO_BEGIN_NAMESPACE
 #define SPIO_INLINE_NAMESPACE_NAME v0
-#define SPIO_BEGIN_NAMESPACE \
-    namespace spio {         \
-        inline namespace SPIO_INLINE_NAMESPACE_NAME {
-#define SPIO_END_NAMESPACE \
-    }                      \
-    }
+#define SPIO_BEGIN_NAMESPACE inline namespace SPIO_INLINE_NAMESPACE_NAME {
+#define SPIO_END_NAMESPACE }
 #endif
 
 // Detect string_view
@@ -189,11 +185,11 @@
 
 #if SPIO_HAS_RELAXED_CONSTEXPR
 #define SPIO_CONSTEXPR constexpr
-#define SPIO_CONSTEXPR_STRICT constexpr
+#define SPIO_CONSTEXPR14 constexpr
 #define SPIO_CONSTEXPR_DECL constexpr
 #else
-#define SPIO_CONSTEXPR inline
-#define SPIO_CONSTEXPR_STRICT constexpr
+#define SPIO_CONSTEXPR constexpr
+#define SPIO_CONSTEXPR14 inline
 #define SPIO_CONSTEXPR_DECL
 #endif
 

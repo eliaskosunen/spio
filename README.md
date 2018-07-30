@@ -7,6 +7,8 @@
 ![C++ Standard](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17-blue.svg)
 ![License](https://img.shields.io/github/license/eliaskosunen/spio.svg)
 
+C++ IO for the 21st century
+
 ## About
 
 Standard IO facilities provided by C++ are very bad.

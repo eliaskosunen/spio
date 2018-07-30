@@ -22,6 +22,7 @@
 #include "third_party/gsl.h"
 #include "util.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 using streamsize = std::ptrdiff_t;
@@ -30,38 +31,38 @@ using streamoff = std::ptrdiff_t;
 class streampos {
 public:
 #if !SPIO_PTRDIFF_IS_INT
-    SPIO_CONSTEXPR_STRICT streampos(int n) noexcept
+    SPIO_CONSTEXPR streampos(int n) noexcept
         : streampos(static_cast<streamoff>(n))
     {
     }
 #endif
-    SPIO_CONSTEXPR_STRICT streampos(streamoff n) noexcept : m_pos(n) {}
+    SPIO_CONSTEXPR streampos(streamoff n) noexcept : m_pos(n) {}
 
-    SPIO_CONSTEXPR_STRICT explicit operator streamoff() const noexcept
+    SPIO_CONSTEXPR explicit operator streamoff() const noexcept
     {
         return m_pos;
     }
 
-    bool operator==(const streampos& p) const
+    SPIO_CONSTEXPR bool operator==(const streampos& p) const noexcept
     {
         return m_pos == p.m_pos;
     }
-    bool operator!=(const streampos& p) const
+    SPIO_CONSTEXPR bool operator!=(const streampos& p) const noexcept
     {
         return !(*this == p);
     }
 
-    streampos& operator+=(streamoff n)
+    SPIO_CONSTEXPR14 streampos& operator+=(streamoff n) noexcept
     {
         m_pos += n;
         return *this;
     }
-    streampos& operator-=(streamoff n)
+    SPIO_CONSTEXPR14 streampos& operator-=(streamoff n) noexcept
     {
         return (*this += -n);
     }
 
-    streamoff operator-(const streampos& p) const
+    SPIO_CONSTEXPR streamoff operator-(const streampos& p) const noexcept
     {
         return m_pos - p.m_pos;
     }
@@ -70,12 +71,12 @@ private:
     streamoff m_pos;
 };
 
-inline streampos operator+(streampos l, streampos r)
+SPIO_CONSTEXPR14 streampos operator+(streampos l, streampos r) noexcept
 {
     l += streamoff(r);
     return l;
 }
-inline streampos operator-(streampos l, streampos r)
+SPIO_CONSTEXPR14 streampos operator-(streampos l, streampos r) noexcept
 {
     l -= streamoff(r);
     return l;
@@ -204,5 +205,6 @@ using is_device = conjunction<is_detected<closable_op, Device>,
                               is_detected<is_open_op, Device>,
                               disjunction<is_sink<Device>, is_source<Device>>>;
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_DEVICE_H

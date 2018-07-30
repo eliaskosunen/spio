@@ -32,6 +32,7 @@
 #define SPIO_READ_ALL_MAX_ATTEMPTS 8
 #endif
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename Readable>
@@ -74,27 +75,27 @@ namespace detail {
 
         basic_buffered_source_base(source_type* s) : m_source(s) {}
 
-        source_type& get() noexcept
+        SPIO_CONSTEXPR14 source_type& get() noexcept
         {
             return *m_source;
         }
-        const source_type& get() const noexcept
+        SPIO_CONSTEXPR const source_type& get() const noexcept
         {
             return *m_source;
         }
-        source_type& operator*() noexcept
+        SPIO_CONSTEXPR14 source_type& operator*() noexcept
         {
             return get();
         }
-        const source_type& operator*() const noexcept
+        SPIO_CONSTEXPR const source_type& operator*() const noexcept
         {
             return get();
         }
-        source_type* operator->() noexcept
+        SPIO_CONSTEXPR14 source_type* operator->() noexcept
         {
             return m_source;
         }
-        const source_type* operator->() const noexcept
+        SPIO_CONSTEXPR const source_type* operator->() const noexcept
         {
             return m_source;
         }
@@ -104,7 +105,7 @@ namespace detail {
     };
 
     template <typename T>
-    T round_up_multiple_of_two(T n, T multiple)
+    SPIO_CONSTEXPR14 T round_up_multiple_of_two(T n, T multiple) noexcept
     {
         Expects(multiple > 0);
         Expects((multiple & (multiple - 1)) == 0);
@@ -138,15 +139,15 @@ public:
         Expects(rs <= m_buffer.size());
     }
 
-    size_type free_space() const
+    SPIO_CONSTEXPR size_type free_space() const noexcept
     {
         return m_buffer.free_space();
     }
-    size_type in_use() const
+    SPIO_CONSTEXPR size_type in_use() const noexcept
     {
         return m_buffer.in_use();
     }
-    size_type size() const
+    SPIO_CONSTEXPR size_type size() const noexcept
     {
         return m_buffer.size();
     }
@@ -177,7 +178,7 @@ public:
     }
 
 private:
-    size_type get_read_size(size_type n)
+    SPIO_CONSTEXPR14 size_type get_read_size(size_type n) const noexcept
     {
         return std::min(detail::round_up_multiple_of_two(n, m_read_size),
                         free_space());
@@ -216,5 +217,6 @@ private:
 };
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_SINK_H

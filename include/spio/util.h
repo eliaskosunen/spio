@@ -24,6 +24,7 @@
 #include <memory>
 #include "third_party/gsl.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 #define SPIO_STRINGIZE_DETAIL(x) #x
@@ -90,9 +91,11 @@ struct negation : std::integral_constant<bool, !bool(B::value)> {
 
 struct nonesuch {
     nonesuch() = delete;
-    ~nonesuch() = delete;
     nonesuch(const nonesuch&) = delete;
+    nonesuch(nonesuch&&) noexcept = delete;
     void operator=(const nonesuch&) = delete;
+    void operator=(nonesuch&&) noexcept = delete;
+    ~nonesuch() = delete;
 };
 
 namespace detail {
@@ -141,7 +144,7 @@ namespace detail {
 #endif
 }  // namespace detail
 
-template <typename Container, typename Element>
+template <typename Container, typename Element, typename = int>
 class memcpy_back_insert_iterator {
 public:
     using value_type = void;
@@ -157,12 +160,12 @@ public:
     static_assert(sizeof(element_type) % sizeof(container_value_type) == 0,
                   "Element size not divisible by Container value_type");
 
-    memcpy_back_insert_iterator(container_type& c)
+    memcpy_back_insert_iterator(container_type& c) noexcept
         : m_container(std::addressof(c))
     {
     }
 
-    memcpy_back_insert_iterator& operator=(const element_type& value)
+    memcpy_back_insert_iterator& operator=(const element_type& value) noexcept
     {
         Expects(m_container);
         const auto n = sizeof(element_type) / sizeof(container_value_type);
@@ -170,6 +173,57 @@ public:
             m_container->emplace_back();
         }
         std::memcpy(m_container->data() + m_container->size() - n,
+                    std::addressof(value), sizeof(element_type));
+        return *this;
+    }
+
+    memcpy_back_insert_iterator& operator*() noexcept
+    {
+        return *this;
+    }
+
+    memcpy_back_insert_iterator& operator++() noexcept
+    {
+        return *this;
+    }
+    memcpy_back_insert_iterator& operator++(int) noexcept
+    {
+        return *this;
+    }
+
+private:
+    container_type* m_container;
+};
+
+template <typename Container, typename Element>
+class memcpy_back_insert_iterator<
+    Container,
+    Element,
+    typename std::enable_if<sizeof(Element) ==
+                            sizeof(typename Container::value_type)>::type> {
+public:
+    using value_type = void;
+    using difference_type = void;
+    using pointer = void;
+    using reference = void;
+    using iterator_category = std::output_iterator_tag;
+
+    using container_type = Container;
+    using element_type = Element;
+    using container_value_type = typename Container::value_type;
+
+    static_assert(sizeof(element_type) % sizeof(container_value_type) == 0,
+                  "Element size not divisible by Container value_type");
+
+    memcpy_back_insert_iterator(container_type& c) noexcept
+        : m_container(std::addressof(c))
+    {
+    }
+
+    memcpy_back_insert_iterator& operator=(const element_type& value) noexcept
+    {
+        m_container->emplace_back();
+        std::memcpy(m_container->data() + m_container->size() - 1,
                     std::addressof(value), sizeof(element_type));
         return *this;
     }
@@ -193,5 +247,7 @@ private:
 };
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_UTIL_H
+

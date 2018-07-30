@@ -30,6 +30,7 @@
 #define SPIO_WRITE_ALL_MAX_ATTEMPTS 8
 #endif
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename Device>
@@ -76,27 +77,27 @@ namespace detail {
 
         basic_buffered_sink_base(sink_type* s) : m_sink(s) {}
 
-        sink_type& get() noexcept
+        SPIO_CONSTEXPR14 sink_type& get() noexcept
         {
             return *m_sink;
         }
-        const sink_type& get() const noexcept
+        SPIO_CONSTEXPR const sink_type& get() const noexcept
         {
             return *m_sink;
         }
-        sink_type& operator*() noexcept
+        SPIO_CONSTEXPR14 sink_type& operator*() noexcept
         {
             return get();
         }
-        const sink_type& operator*() const noexcept
+        SPIO_CONSTEXPR const sink_type& operator*() const noexcept
         {
             return get();
         }
-        sink_type* operator->() noexcept
+        SPIO_CONSTEXPR14 sink_type* operator->() noexcept
         {
             return m_sink;
         }
-        const sink_type* operator->() const noexcept
+        SPIO_CONSTEXPR const sink_type* operator->() const noexcept
         {
             return m_sink;
         }
@@ -191,43 +192,43 @@ public:
         return res;
     }
 
-    bool use_buffering() const
+    SPIO_CONSTEXPR bool use_buffering() const noexcept
     {
         return _use_buffering(m_mode);
     }
 
-    size_type size() const
+    SPIO_CONSTEXPR size_type size() const noexcept
     {
         return static_cast<size_type>(m_buf.size());
     }
-    size_type in_use() const
+    SPIO_CONSTEXPR size_type in_use() const noexcept
     {
         return m_next;
     }
-    size_type free_space() const
+    SPIO_CONSTEXPR size_type free_space() const noexcept
     {
         return size() - in_use();
     }
-    bool empty() const
+    SPIO_CONSTEXPR bool empty() const noexcept
     {
         return in_use() == 0;
     }
-    bool full() const
+    SPIO_CONSTEXPR bool full() const noexcept
     {
         return free_space() == 0;
     }
 
-    const buffer_type& buffer() const
+    SPIO_CONSTEXPR const buffer_type& buffer() const noexcept
     {
         return m_buf;
     }
-    buffer_mode mode() const
+    SPIO_CONSTEXPR buffer_mode mode() const noexcept
     {
         return m_mode;
     }
 
 private:
-    size_type write_to_buffer(gsl::span<const gsl::byte> s)
+    size_type write_to_buffer(gsl::span<const gsl::byte> s) noexcept
     {
         Expects(free_space() >= s.size());
         std::copy(s.begin(), s.end(), m_buf.begin() + m_next);
@@ -235,13 +236,13 @@ private:
         return s.size();
     }
 
-    static bool _use_buffering(buffer_mode m)
+    static SPIO_CONSTEXPR bool _use_buffering(buffer_mode m) noexcept
     {
         return (static_cast<typename std::underlying_type<buffer_mode>::type>(
                     m) >>
                 2) == 0;
     }
-    static buffer_type _init_buffer(buffer_mode m, size_type s)
+    static buffer_type _init_buffer(buffer_mode m, size_type s) noexcept
     {
         if (_use_buffering(m)) {
             return buffer_type(static_cast<std::size_t>(s));
@@ -255,5 +256,6 @@ private:
 };
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_SINK_H

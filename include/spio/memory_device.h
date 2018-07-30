@@ -26,6 +26,7 @@
 #include "third_party/expected.h"
 #include "third_party/gsl.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 namespace detail {
@@ -46,21 +47,22 @@ namespace detail {
         using span_type = typename memory_device_span<IsConst>::type;
         using byte_type = typename span_type::value_type;
 
-        SPIO_CONSTEXPR_STRICT memory_device_impl() = default;
-        SPIO_CONSTEXPR_STRICT memory_device_impl(span_type s) : m_buf(s) {}
+        SPIO_CONSTEXPR memory_device_impl() = default;
+        SPIO_CONSTEXPR memory_device_impl(span_type s) : m_buf(s) {}
 
-        bool is_open() const
+        SPIO_CONSTEXPR bool is_open() const noexcept
         {
             return m_buf.data() != nullptr;
         }
-        nonstd::expected<void, failure> close()
+        SPIO_CONSTEXPR14 nonstd::expected<void, failure> close() noexcept
         {
             m_buf = span_type{};
             return {};
         }
 
         template <bool C = IsConst>
-        auto output() -> typename std::enable_if<!C, gsl::span<gsl::byte>>::type
+        SPIO_CONSTEXPR14 auto output() noexcept ->
+            typename std::enable_if<!C, gsl::span<gsl::byte>>::type
         {
             Expects(is_open());
             return gsl::as_writeable_bytes(m_buf);
@@ -77,7 +79,7 @@ namespace detail {
             return n;
         }
 
-        gsl::span<const gsl::byte> input() const
+        SPIO_CONSTEXPR14 gsl::span<const gsl::byte> input() const noexcept
         {
             Expects(is_open());
             return gsl::as_bytes(m_buf);
@@ -92,7 +94,8 @@ namespace detail {
             return n;
         }
 
-        nonstd::expected<streamsize, failure> extent() const
+        SPIO_CONSTEXPR14 nonstd::expected<streamsize, failure> extent() const
+            noexcept
         {
             return m_buf.size();
         }
@@ -144,5 +147,6 @@ public:
 };
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_MEMORY_DEVICE_H

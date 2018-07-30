@@ -24,6 +24,7 @@
 #include "result.h"
 #include "third_party/gsl.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 struct filter_base {
@@ -125,26 +126,31 @@ public:
     {
     }
 
-    filter_list& filters() &
+    SPIO_CONSTEXPR14 filter_list& filters() & noexcept
     {
         return m_list;
     }
-    const filter_list& filters() const&
+    SPIO_CONSTEXPR const filter_list& filters() const& noexcept
     {
         return m_list;
     }
-    filter_list&& filters() &&
+    SPIO_CONSTEXPR14 filter_list&& filters() && noexcept
     {
         return std::move(m_list);
     }
 
-    SPIO_CONSTEXPR_STRICT size_type size() const
+    SPIO_CONSTEXPR size_type size() const noexcept
     {
         return std::tuple_size<filter_list>::value;
     }
+    SPIO_CONSTEXPR bool empty() const noexcept
+    {
+        return size() != 0;
+    }
 
     template <typename F>
-    auto for_each(F&& f)
+    auto for_each(F&& f) noexcept(
+        noexcept(std::declval<F>()(std::declval<filter_list&>())))
         -> std::initializer_list<typename std::result_of<F(filter_list&)>::type>
     {
         return detail::for_each(
@@ -166,15 +172,15 @@ public:
 
     basic_dynamic_chain() = default;
 
-    filter_list& filters() &
+    SPIO_CONSTEXPR14 filter_list& filters() & noexcept
     {
         return m_list;
     }
-    const filter_list& filters() const&
+    SPIO_CONSTEXPR const filter_list& filters() const& noexcept
     {
         return m_list;
     }
-    filter_list&& filters() &&
+    SPIO_CONSTEXPR14 filter_list&& filters() && noexcept
     {
         return std::move(m_list);
     }
@@ -198,11 +204,11 @@ public:
         return last;
     }
 
-    size_type size() const
+    size_type size() const noexcept
     {
         return static_cast<size_type>(m_list.size());
     }
-    bool empty() const
+    bool empty() const noexcept
     {
         return m_list.empty();
     }
@@ -218,17 +224,17 @@ public:
     using size_type = std::ptrdiff_t;
 
     chain_base() = default;
-    chain_base(static_type s) : m_static(std::move(s)) {}
+    chain_base(static_type s) noexcept : m_static(std::move(s)) {}
 
-    static_type& get_static() &
+    SPIO_CONSTEXPR14 static_type& get_static() & noexcept
     {
         return m_static;
     }
-    const static_type& get_static() const&
+    SPIO_CONSTEXPR const static_type& get_static() const& noexcept
     {
         return m_static;
     }
-    static_type&& get_static() &&
+    SPIO_CONSTEXPR14 static_type&& get_static() && noexcept
     {
         return std::move(m_static);
     }
@@ -246,22 +252,33 @@ public:
     using buffer_type = typename Base::buffer_type;
 
     basic_chain_base() = default;
-    basic_chain_base(static_type s, dynamic_type d)
+    basic_chain_base(static_type s, dynamic_type d) noexcept
         : chain_base<StaticFilters...>(std::move(s)), m_dynamic(std::move(d))
     {
     }
 
-    dynamic_type& get_dynamic() &
+    SPIO_CONSTEXPR14 dynamic_type& get_dynamic() & noexcept
     {
         return m_dynamic;
     }
-    const dynamic_type& get_dynamic() const&
+    SPIO_CONSTEXPR const dynamic_type& get_dynamic() const& noexcept
     {
         return m_dynamic;
     }
-    dynamic_type&& get_dynamic() &&
+    SPIO_CONSTEXPR14 dynamic_type&& get_dynamic() && noexcept
     {
         return std::move(m_dynamic);
+    }
+
+    size_type size() const noexcept
+    {
+        return chain_base<StaticFilters...>::get_static().size() +
+               m_dynamic.size();
+    }
+    bool empty() const noexcept
+    {
+        return chain_base<StaticFilters...>::get_static().empty() &&
+               m_dynamic.empty();
     }
 
 private:
@@ -270,7 +287,7 @@ private:
 
 template <typename... StaticFilters>
 class sink_filter_chain
-    : public basic_chain_base<output_filter, StaticFilters...> {
+    : public virtual basic_chain_base<output_filter, StaticFilters...> {
     using base = basic_chain_base<output_filter, StaticFilters...>;
 
     struct static_filter_callback {
@@ -316,10 +333,19 @@ public:
         }
         return static_cast<typename base::size_type>(buf.size());
     }
+
+    typename base::size_type output_size() const noexcept
+    {
+        return base::size();
+    }
+    bool output_empty() const noexcept
+    {
+        return base::empty();
+    }
 };
 template <typename... StaticFilters>
 class byte_sink_filter_chain
-    : public basic_chain_base<byte_output_filter, StaticFilters...> {
+    : public virtual basic_chain_base<byte_output_filter, StaticFilters...> {
     using base = basic_chain_base<byte_output_filter, StaticFilters...>;
 
     struct static_filter_callback {
@@ -359,11 +385,20 @@ public:
         }
         return 1;
     }
+
+    typename base::size_type output_size() const noexcept
+    {
+        return base::size();
+    }
+    bool output_empty() const noexcept
+    {
+        return base::empty();
+    }
 };
 
 template <typename... StaticFilters>
 class source_filter_chain
-    : public basic_chain_base<input_filter, StaticFilters...> {
+    : public virtual basic_chain_base<input_filter, StaticFilters...> {
     using base = basic_chain_base<input_filter, StaticFilters...>;
 
     struct static_filter_callback {
@@ -409,10 +444,19 @@ public:
         }
         return static_cast<typename base::size_type>(buf.size());
     }
+
+    typename base::size_type input_size() const noexcept
+    {
+        return base::size();
+    }
+    bool input_empty() const noexcept
+    {
+        return base::empty();
+    }
 };
 template <typename... StaticFilters>
 class byte_source_filter_chain
-    : public basic_chain_base<byte_input_filter, StaticFilters...> {
+    : public virtual basic_chain_base<byte_input_filter, StaticFilters...> {
     using base = basic_chain_base<byte_input_filter, StaticFilters...>;
 
     struct static_filter_callback {
@@ -452,8 +496,18 @@ public:
         }
         return 1;
     }
+
+    typename base::size_type input_size() const noexcept
+    {
+        return base::size();
+    }
+    bool input_empty() const noexcept
+    {
+        return base::empty();
+    }
 };
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_STREAM_BASE_H

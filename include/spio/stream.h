@@ -27,6 +27,7 @@
 #include "stream_base.h"
 #include "third_party/optional.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename CharT>
@@ -36,20 +37,20 @@ struct character {
     template <template <typename...> class Chain>
     using apply_filters = Chain<>;
 
-    static streampos to_device(streampos pos)
+    static SPIO_CONSTEXPR streampos to_device(streampos pos) noexcept
     {
         return pos.operator streamoff() * static_cast<streamoff>(sizeof(type));
     }
-    static streamoff to_device(streamoff off)
+    static SPIO_CONSTEXPR streamoff to_device(streamoff off) noexcept
     {
         return off * static_cast<streamoff>(sizeof(type));
     }
 
-    static streampos from_device(streampos pos)
+    static SPIO_CONSTEXPR streampos from_device(streampos pos) noexcept
     {
         return pos.operator streamoff() / static_cast<streamoff>(sizeof(type));
     }
-    static streamoff from_device(streamoff off)
+    static SPIO_CONSTEXPR streamoff from_device(streamoff off) noexcept
     {
         return off / static_cast<streamoff>(sizeof(type));
     }
@@ -96,9 +97,9 @@ namespace detail {
     public:
         using formatter_type = basic_formatter<Char>;
 
-        output_stream_base() = default;
+        SPIO_CONSTEXPR output_stream_base() = default;
 
-        formatter_type formatter() const
+        SPIO_CONSTEXPR formatter_type formatter() const noexcept
         {
             return formatter_type{};
         }
@@ -112,26 +113,29 @@ namespace detail {
         using sink_type = guarded_buffered_writable<Device>;
         using formatter_type = basic_formatter<Char>;
 
-        output_stream_base() = default;
-        output_stream_base(sink_type s) : m_sink(std::move(s)) {}
+        SPIO_CONSTEXPR output_stream_base() = default;
+        SPIO_CONSTEXPR14 output_stream_base(sink_type s) noexcept
+            : m_sink(std::move(s))
+        {
+        }
 
-        sink_type& sink()
+        SPIO_CONSTEXPR14 sink_type& sink() noexcept
         {
             Expects(m_sink.has_value());
             return *m_sink;
         }
-        const sink_type& sink() const
+        SPIO_CONSTEXPR14 const sink_type& sink() const noexcept
         {
             Expects(m_sink.has_value());
             return *m_sink;
         }
 
-        nonstd::optional<sink_type>& sink_storage()
+        SPIO_CONSTEXPR14 nonstd::optional<sink_type>& sink_storage() noexcept
         {
             return m_sink;
         }
 
-        formatter_type formatter() const
+        SPIO_CONSTEXPR formatter_type formatter() const noexcept
         {
             return formatter_type{};
         }
@@ -152,21 +156,23 @@ namespace detail {
     public:
         using source_type = basic_buffered_readable<Device>;
 
-        input_stream_base() = default;
-        input_stream_base(source_type s) : m_source(std::move(s)) {}
+        SPIO_CONSTEXPR input_stream_base() = default;
+        SPIO_CONSTEXPR input_stream_base(source_type s) : m_source(std::move(s))
+        {
+        }
 
-        source_type& source() &
+        SPIO_CONSTEXPR14 source_type& source() & noexcept
         {
             Expects(m_source.has_value());
             return *m_source;
         }
-        const source_type& source() const&
+        SPIO_CONSTEXPR14 const source_type& source() const& noexcept
         {
             Expects(m_source.has_value());
             return *m_source;
         }
 
-        nonstd::optional<source_type> source_storage()
+        SPIO_CONSTEXPR14 nonstd::optional<source_type> source_storage()
         {
             return m_source;
         }
@@ -212,11 +218,11 @@ public:
             }
         }
 
-        const failure& error() const
+        SPIO_CONSTEXPR const failure& error() const noexcept
         {
             return m_result.error();
         }
-        explicit operator bool() const
+        SPIO_CONSTEXPR explicit operator bool() const noexcept
         {
             return m_result.operator bool();
         }
@@ -253,11 +259,11 @@ public:
             }
         }
 
-        const failure& error() const
+        SPIO_CONSTEXPR const failure& error() const noexcept
         {
             return m_result.error();
         }
-        explicit operator bool() const
+        SPIO_CONSTEXPR explicit operator bool() const noexcept
         {
             return m_result.operator bool();
         }
@@ -285,33 +291,33 @@ public:
         return device().close();
     }
 
-    chain_type& chain()
+    SPIO_CONSTEXPR14 chain_type& chain() noexcept
     {
         return m_chain;
     }
-    const chain_type& chain() const
+    SPIO_CONSTEXPR const chain_type& chain() const noexcept
     {
         return m_chain;
     }
 
-    device_type& device() &
+    SPIO_CONSTEXPR14 device_type& device() & noexcept
     {
         return m_device;
     }
-    const device_type& device() const&
+    SPIO_CONSTEXPR const device_type& device() const& noexcept
     {
         return m_device;
     }
-    device_type&& device() &&
+    SPIO_CONSTEXPR14 device_type&& device() && noexcept
     {
         return std::move(m_device);
     }
 
-    tied_type* tie() const
+    SPIO_CONSTEXPR tied_type* tie() const noexcept
     {
         return m_tie;
     }
-    tied_type* tie(tied_type* s)
+    SPIO_CONSTEXPR14 tied_type* tie(tied_type* s) noexcept
     {
         auto prev = m_tie;
         m_tie = s;
@@ -331,15 +337,19 @@ private:
 };
 
 template <typename Stream>
-result write(Stream& s, std::vector<gsl::byte> buf)
+auto write(Stream& s, std::vector<gsl::byte> buf) ->
+    typename std::enable_if<is_writable_stream<Stream>::value, result>::type
 {
     auto sentry = typename Stream::output_sentry(s);
     if (!sentry) {
         return make_result(0, sentry.error());
     }
-    auto r = s.chain().write(buf);
-    if (r.value() < static_cast<std::ptrdiff_t>(buf.size()) || r.has_error()) {
-        return r;
+    if (!s.chain().output_empty()) {
+        auto r = s.chain().write(buf);
+        if (r.value() < static_cast<std::ptrdiff_t>(buf.size()) ||
+            r.has_error()) {
+            return r;
+        }
     }
     if (s.sink().use_buffering()) {
         return s.sink().write(buf);
@@ -349,8 +359,14 @@ result write(Stream& s, std::vector<gsl::byte> buf)
 template <typename Stream>
 result write(Stream& s, gsl::span<const gsl::byte> data)
 {
-    std::vector<gsl::byte> buf(data.begin(), data.end());
-    return write(s, buf);
+    if (!s.chain().output_empty()) {
+        std::vector<gsl::byte> buf(data.begin(), data.end());
+        return write(s, buf);
+    }
+    if (s.sink().use_buffering()) {
+        return s.sink().write(data);
+    }
+    return s.device().write(data);
 }
 
 template <typename Stream>
@@ -360,9 +376,12 @@ result write_at(Stream& s, std::vector<gsl::byte> buf, streampos pos)
     if (!sentry) {
         return make_result(0, sentry.error());
     }
-    auto r = s.chain().write(buf);
-    if (r.value() < static_cast<std::ptrdiff_t>(buf.size()) || r.has_error()) {
-        return r;
+    if (!s.chain().output_empty()) {
+        auto r = s.chain().write(buf);
+        if (r.value() < static_cast<std::ptrdiff_t>(buf.size()) ||
+            r.has_error()) {
+            return r;
+        }
     }
     return s.device().write_at(buf, Stream::character_type::to_device(pos));
 }
@@ -374,15 +393,19 @@ result write_at(Stream& s, gsl::span<const gsl::byte> data, streampos pos)
 }
 
 template <typename Stream>
-result put(Stream& s, gsl::byte data)
+auto put(Stream& s, gsl::byte data) ->
+    typename std::enable_if<is_byte_writable_stream<Stream>::value,
+                            result>::type
 {
     auto sentry = typename Stream::output_sentry(s);
     if (!sentry) {
         return make_result(0, sentry.error());
     }
-    auto r = s.chain().put(data);
-    if (r.value() != 1 || r.has_error()) {
-        return r;
+    if (!s.chain().output_empty()) {
+        auto r = s.chain().put(data);
+        if (r.value() != 1 || r.has_error()) {
+            return r;
+        }
     }
     return s.device().put(data);
 }
@@ -424,14 +447,16 @@ result read(Stream& s, gsl::span<gsl::byte> data)
     if (eof) {
         s.set_eof();
     }
-    data = data.first(r.value());
-    r = s.chain().read(data);
-    if (r.has_error()) {
-        putback(s, data);
-        return make_result(0, r.error());
-    }
-    if (r.value() < data.size()) {
-        putback(s, data.subspan(r.value()));
+    if (!s.chain().input_empty()) {
+        data = data.first(r.value());
+        r = s.chain().read(data);
+        if (r.has_error()) {
+            putback(s, data);
+            return make_result(0, r.error());
+        }
+        if (r.value() < data.size()) {
+            putback(s, data.subspan(r.value()));
+        }
     }
     return r;
 }
@@ -453,14 +478,16 @@ result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
     if (eof) {
         s.set_eof();
     }
-    data = data.first(r.value());
-    r = s.chain().read(data);
-    if (r.has_error()) {
-        putback(s, data);
-        return make_result(0, r.error());
-    }
-    if (r.value() < data.size()) {
-        putback(s, data.subspan(r.value()));
+    if (!s.chain().input_empty()) {
+        data = data.first(r.value());
+        r = s.chain().read(data);
+        if (r.has_error()) {
+            putback(s, data);
+            return make_result(0, r.error());
+        }
+        if (r.value() < data.size()) {
+            putback(s, data.subspan(r.value()));
+        }
     }
     return r;
 }
@@ -483,12 +510,14 @@ result get(Stream& s, gsl::byte& data)
     if (eof) {
         s.set_eof();
     }
-    r = s.chain().get(data);
-    if (r.has_error()) {
-        if (r.value() == 1) {
-            putback(s, data);
+    if (!s.chain().input_empty()) {
+        r = s.chain().get(data);
+        if (r.has_error()) {
+            if (r.value() == 1) {
+                putback(s, data);
+            }
+            return make_result(0, r.error());
         }
-        return make_result(0, r.error());
     }
     return r;
 }
@@ -551,5 +580,6 @@ nonstd::expected<streampos, failure> tell(Stream& s, inout which = in | out)
 }
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_STREAM_H

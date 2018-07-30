@@ -28,6 +28,7 @@
 #include "third_party/gsl.h"
 #include "third_party/variant.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 struct deadline {
@@ -197,5 +198,6 @@ public:
 };
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_AFIO_DEVICE_H

@@ -18,9 +18,11 @@
 #include <spio/spio.h>
 #include "doctest.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 template class basic_ring<char>;
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 TEST_CASE("ring")
 {

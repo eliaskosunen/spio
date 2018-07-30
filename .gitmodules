@@ -10,3 +10,6 @@
 [submodule "tests/doctest"]
 	path = tests/doctest
 	url = https://github.com/onqtam/doctest
+[submodule "benchmark/google-benchmark"]
+	path = benchmark/google-benchmark
+	url = https://github.com/google/benchmark

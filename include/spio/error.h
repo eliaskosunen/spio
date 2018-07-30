@@ -29,7 +29,9 @@
 #include "third_party/fmt.h"
 #include "third_party/gsl.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
+
 enum error {
     invalid_input,
     invalid_operation,
@@ -43,7 +45,9 @@ enum error {
     unreachable,
     undefined_error
 };
+
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 namespace std {
 template <>
@@ -51,7 +55,9 @@ struct is_error_code_enum<spio::error> : true_type {
 };
 }  // namespace std
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
+
 struct error_category : public std::error_category {
     const char* name() const noexcept override
     {
@@ -101,11 +107,11 @@ namespace detail {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
 #endif
-inline const error_category& get_error_category()
-{
-    static error_category inst;
-    return inst;
-}
+    inline const error_category& get_error_category()
+    {
+        static error_category inst;
+        return inst;
+    }
 #if SPIO_CLANG
 #pragma clang diagnostic pop
 #endif
@@ -114,11 +120,6 @@ inline const error_category& get_error_category()
 inline std::error_code make_error_code(error e)
 {
     return {static_cast<int>(e), detail::get_error_category()};
-}
-
-inline bool is_eof(const std::error_code& e)
-{
-    return e == make_error_code(end_of_file);
 }
 
 #if SPIO_WINDOWS
@@ -173,6 +174,8 @@ public:
 #else
 #define SPIO_UNIMPLEMENTED SPIO_UNIMPLEMENTED_DEBUG
 #endif  // NDEBUG
+
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_ERROR_H

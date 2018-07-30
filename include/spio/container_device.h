@@ -27,23 +27,16 @@
 #include "third_party/gsl.h"
 #include "util.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 namespace detail {
-    template <template <typename...> class Container, bool IsConst>
+    template <template <typename...> class Container>
     class basic_container_device_impl {
-        using _container_type = Container<gsl::byte>;
-
     public:
-        using container_type = typename std::conditional<
-            IsConst,
-            typename std::add_const<_container_type>::type,
-            _container_type>::type;
+        using container_type = Container<gsl::byte>;
+        using iterator = typename container_type::iterator;
         using const_iterator = typename container_type::const_iterator;
-        using iterator =
-            typename std::conditional<IsConst,
-                                      const_iterator,
-                                      typename container_type::iterator>::type;
 
         basic_container_device_impl() = default;
         basic_container_device_impl(container_type& c)
@@ -51,30 +44,31 @@ namespace detail {
         {
         }
 
-        container_type* container()
+        SPIO_CONSTEXPR14 container_type* container() noexcept
         {
             return m_buf;
         }
-        typename std::add_const<container_type*>::type container() const
+        SPIO_CONSTEXPR const container_type* container() const noexcept
         {
             return m_buf;
         }
 
-        bool is_open() const
+        SPIO_CONSTEXPR bool is_open() const noexcept
         {
             return m_buf != nullptr;
         }
-        void close()
+        nonstd::expected<void, failure> close() noexcept
         {
             Expects(m_buf != nullptr);
             m_buf = nullptr;
+            return {};
         }
 
-        result read(gsl::span<gsl::byte> s, bool& eof)
+        result read(gsl::span<gsl::byte> s, bool& eof) noexcept
         {
             Expects(is_open());
 
-            if (m_it == m_buf->end() && s.size() != 0) {
+            if (SPIO_UNLIKELY(m_it == m_buf->end() && s.size() != 0)) {
                 return make_result(0, end_of_file);
             }
             auto dist = std::distance(m_it, m_buf->end());
@@ -86,7 +80,7 @@ namespace detail {
             }
             return n;
         }
-        result read_at(gsl::span<gsl::byte> s, streampos pos)
+        result read_at(gsl::span<gsl::byte> s, streampos pos) noexcept
         {
             Expects(is_open());
 
@@ -102,54 +96,49 @@ namespace detail {
             return n;
         }
 
-        template <bool C = IsConst>
-        auto write(gsl::span<const gsl::byte> s) ->
-            typename std::enable_if<!C, result>::type
+        result write(gsl::span<const gsl::byte> s)
         {
             Expects(is_open());
 
-            if (m_it == m_buf->end()) {
-                m_buf->reserve(m_buf->size() +
-                               static_cast<std::size_t>(s.size()));
+            if (SPIO_LIKELY(m_it == m_buf->end())) {
                 append(s.begin(), s.end());
                 m_it = m_buf->end();
             }
             else {
-                auto dist = std::distance(m_buf->begin(), m_it);
-                if (static_cast<std::size_t>(s.size()) > m_buf->size()) {
-                    m_buf->reserve(m_buf->size() +
-                                   static_cast<std::size_t>(s.size()));
-                    m_buf->insert(m_buf->begin() + dist, s.begin(), s.end());
-                }
-                else {
-                    m_buf->insert(m_it, s.begin(), s.end());
-                }
-                m_it = m_buf->begin() + dist + s.size();
+                auto dist = std::distance(m_it, m_buf->end());
+                auto n = std::min(dist, s.size());
+                m_it = std::copy_n(s.begin(), n, m_it);
+                s = s.subspan(n);
+                m_it = m_buf->insert(m_it, s.begin(), s.end());
             }
             return s.size();
         }
-        template <bool C = IsConst>
-        auto write_at(gsl::span<const gsl::byte> s, streampos pos) ->
-            typename std::enable_if<!C, result>::type
+        result write_at(gsl::span<const gsl::byte> s, streampos pos)
         {
             Expects(is_open());
 
             if (pos >= m_buf->size()) {
                 return make_result(0, out_of_range);
             }
+            auto dist = m_buf->size() - pos;
+            auto n = std::min(dist, s.size());
+            const auto size = s.size();
+            std::copy_n(s.begin(), n, m_buf->begin() + pos);
+            pos += n;
+            s = s.subspan(n);
             m_buf->insert(m_buf->begin() + pos, s.begin(), s.end());
-            return s.size();
+            return size;
         }
 
         nonstd::expected<streampos, failure> seek(streampos pos,
-                                                  inout which = in | out)
+                                                  inout which = in | out) noexcept
         {
             SPIO_UNUSED(which);
             return seek(pos, seekdir::beg);
         }
         nonstd::expected<streampos, failure> seek(streamoff off,
                                                   seekdir dir,
-                                                  inout which = in | out)
+                                                  inout which = in | out) noexcept
         {
             SPIO_UNUSED(which);
             Expects(is_open());
@@ -196,7 +185,7 @@ namespace detail {
             return std::distance(m_buf->begin(), m_it);
         }
 
-        nonstd::expected<streamsize, failure> extent() const
+        nonstd::expected<streamsize, failure> extent() const noexcept
         {
             Expects(is_open());
             return static_cast<streamsize>(m_buf->size());
@@ -204,7 +193,7 @@ namespace detail {
         nonstd::expected<streamsize, failure> truncate(streamsize newsize)
         {
             Expects(is_open());
-            m_buf->truncate(newsize);
+            m_buf->resize(newsize);
             return extent();
         }
 
@@ -242,8 +231,8 @@ namespace detail {
 
 template <template <typename...> class Container>
 class basic_container_device
-    : private detail::basic_container_device_impl<Container, false> {
-    using base = detail::basic_container_device_impl<Container, false>;
+    : private detail::basic_container_device_impl<Container> {
+    using base = detail::basic_container_device_impl<Container>;
 
 public:
     using base::base;
@@ -256,8 +245,8 @@ public:
 
 template <template <typename...> class Container>
 class basic_container_sink
-    : private detail::basic_container_device_impl<Container, false> {
-    using base = detail::basic_container_device_impl<Container, false>;
+    : private detail::basic_container_device_impl<Container> {
+    using base = detail::basic_container_device_impl<Container>;
 
 public:
     using base::base;
@@ -269,8 +258,8 @@ public:
 
 template <template <typename...> class Container>
 class basic_container_source
-    : private detail::basic_container_device_impl<Container, true> {
-    using base = detail::basic_container_device_impl<Container, true>;
+    : private detail::basic_container_device_impl<Container> {
+    using base = detail::basic_container_device_impl<Container>;
 
 public:
     using base::base;
@@ -282,8 +271,8 @@ public:
 
 template <template <typename...> class Container>
 class basic_random_access_container_device
-    : private detail::basic_container_device_impl<Container, false> {
-    using base = detail::basic_container_device_impl<Container, false>;
+    : private detail::basic_container_device_impl<Container> {
+    using base = detail::basic_container_device_impl<Container>;
 
 public:
     using base::base;
@@ -296,8 +285,8 @@ public:
 
 template <template <typename...> class Container>
 class basic_random_access_container_sink
-    : private detail::basic_container_device_impl<Container, false> {
-    using base = detail::basic_container_device_impl<Container, false>;
+    : private detail::basic_container_device_impl<Container> {
+    using base = detail::basic_container_device_impl<Container>;
 
 public:
     using base::base;
@@ -309,8 +298,8 @@ public:
 
 template <template <typename...> class Container>
 class basic_random_access_container_source
-    : private detail::basic_container_device_impl<Container, true> {
-    using base = detail::basic_container_device_impl<Container, true>;
+    : private detail::basic_container_device_impl<Container> {
+    using base = detail::basic_container_device_impl<Container>;
 
 public:
     using base::base;
@@ -325,5 +314,6 @@ using vector_sink = basic_container_sink<std::vector>;
 using vector_source = basic_container_source<std::vector>;
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_CONTAINER_DEVICE_H

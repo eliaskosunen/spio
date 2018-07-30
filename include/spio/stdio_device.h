@@ -28,29 +28,30 @@
 #include "third_party/gsl.h"
 #include "util.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 class stdio_device {
 public:
-    SPIO_CONSTEXPR_STRICT stdio_device() = default;
-    SPIO_CONSTEXPR_STRICT stdio_device(std::FILE* h) : m_handle(h) {}
+    SPIO_CONSTEXPR stdio_device() = default;
+    SPIO_CONSTEXPR stdio_device(std::FILE* h) : m_handle(h) {}
 
-    SPIO_CONSTEXPR_STRICT bool is_open() const noexcept
+    SPIO_CONSTEXPR bool is_open() const noexcept
     {
         return m_handle != nullptr;
     }
-    nonstd::expected<void, failure> close()
+    nonstd::expected<void, failure> close() noexcept
     {
         Expects(is_open());
         m_handle = nullptr;
         return {};
     }
 
-    SPIO_CONSTEXPR std::FILE* handle() noexcept
+    SPIO_CONSTEXPR14 std::FILE* handle() noexcept
     {
         return m_handle;
     }
-    SPIO_CONSTEXPR_STRICT const std::FILE* handle() const noexcept
+    SPIO_CONSTEXPR const std::FILE* handle() const noexcept
     {
         return m_handle;
     }
@@ -173,5 +174,6 @@ public:
 static_assert(is_sink<stdio_sink>::value, "");
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_STDIO_DEVICE_H

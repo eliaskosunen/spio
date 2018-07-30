@@ -27,6 +27,7 @@
 #include "third_party/fmt.h"
 #include "util.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename CharT>
@@ -44,6 +45,29 @@ struct basic_formatter {
                                a);
     }
 };
+
+namespace detail {
+    template <typename T, typename = int>
+    struct print_write_enable : std::false_type {
+    };
+    template <typename T>
+    struct print_write_enable<
+        T,
+        void_t<decltype(
+            write(std::declval<T&>(), std::declval<std::vector<gsl::byte>>()))>>
+        : std::true_type {
+    };
+
+    template <typename T, typename = int>
+    struct print_put_enable : std::false_type {
+    };
+    template <typename T>
+    struct print_put_enable<
+        T,
+        void_t<decltype(put(std::declval<T&>(), std::declval<gsl::byte>()))>>
+        : std::true_type {
+    };
+}  // namespace detail
 
 template <typename Stream, typename... Args>
 auto print(Stream& s,
@@ -65,7 +89,7 @@ template <typename Stream, typename... Args>
 auto print(Stream& s,
            basic_string_view<typename Stream::char_type> f,
            const Args&... a)
-    -> decltype(write(std::declval<Stream&>(), std::declval<gsl::byte>()),
+    -> decltype(put(std::declval<Stream&>(), std::declval<gsl::byte>()),
                 result())
 {
     std::vector<gsl::byte> buf;
@@ -85,14 +109,10 @@ auto print(Stream& s,
     return r;
 }
 template <typename Stream, typename... Args>
-auto print_at(Stream& s,
-              streampos pos,
-              basic_string_view<typename Stream::char_type> f,
-              const Args&... a)
-    -> decltype(write_at(std::declval<Stream&>(),
-                         std::declval<std::vector<gsl::byte>>(),
-                         std::declval<streampos>()),
-                result())
+result print_at(Stream& s,
+                streampos pos,
+                basic_string_view<typename Stream::char_type> f,
+                const Args&... a)
 {
     std::vector<gsl::byte> buf;
     using iterator = memcpy_back_insert_iterator<std::vector<gsl::byte>,
@@ -104,5 +124,6 @@ auto print_at(Stream& s,
 }
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_FORMATTER_H

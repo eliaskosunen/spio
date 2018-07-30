@@ -23,14 +23,15 @@
 #include <vector>
 #include "device.h"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 class stream_base {
 public:
     stream_base(const stream_base&) = delete;
     stream_base& operator=(const stream_base&) = delete;
-    stream_base(stream_base&&) = default;
-    stream_base& operator=(stream_base&&) = default;
+    stream_base(stream_base&&) noexcept = default;
+    stream_base& operator=(stream_base&&) noexcept = default;
 
     virtual ~stream_base() = default;
 
@@ -158,5 +159,6 @@ template <typename Stream>
 using is_tellable_stream = is_seekable<typename Stream::device_type>;
 
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #endif  // SPIO_STREAM_BASE_H
