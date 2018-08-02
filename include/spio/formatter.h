@@ -78,6 +78,7 @@ auto print(Stream& s,
                 result())
 {
     std::vector<gsl::byte> buf;
+    buf.reserve(f.size());
     using iterator = memcpy_back_insert_iterator<std::vector<gsl::byte>,
                                                  typename Stream::char_type>;
     get_formatter(s)(iterator(buf), f,

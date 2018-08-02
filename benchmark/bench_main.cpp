@@ -18,4 +18,13 @@
 #include <benchmark/benchmark.h>
 #include <spio/spio.h>
 
+#if SPIO_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wredundant-decls"
+#endif
+
 BENCHMARK_MAIN();
+
+#if SPIO_GCC
+#pragma GCC diagnostic pop
+#endif

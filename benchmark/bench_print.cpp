@@ -57,9 +57,9 @@ static void print_spio_write_device(benchmark::State& state)
         state.PauseTiming();
         auto data = generate_data(static_cast<size_t>(state.range(0)));
         std::vector<gsl::byte> str;
+        spio::vector_sink sink{str};
         state.ResumeTiming();
 
-        spio::vector_sink sink{str};
         for (auto& n : data) {
             sink.write(gsl::as_bytes(
                 gsl::make_span(&n[0], static_cast<int64_t>(n.size()))));
@@ -77,7 +77,6 @@ static void print_spio_write_stream(benchmark::State& state)
         state.PauseTiming();
         auto data = generate_data(static_cast<size_t>(state.range(0)));
         std::vector<gsl::byte> str;
-        state.ResumeTiming();
 
         spio::vector_sink sink{str};
         using stream_type =
@@ -87,6 +86,10 @@ static void print_spio_write_stream(benchmark::State& state)
                       stream_type::output_base{}, stream_type::chain_type{});
         s.sink_storage() = nonstd::make_optional(
             stream_type::sink_type(sink, spio::buffer_mode::none));
+        spio::basic_stream_ref<spio::character<char>, spio::writable_tag> ref(
+            s);
+        state.ResumeTiming();
+
         for (auto& n : data) {
             spio::write(s, gsl::as_bytes(gsl::make_span(
                                &n[0], static_cast<int64_t>(n.size()))));
@@ -105,7 +108,6 @@ static void print_spio_write_stream_ref(benchmark::State& state)
         state.PauseTiming();
         auto data = generate_data(static_cast<size_t>(state.range(0)));
         std::vector<gsl::byte> str;
-        state.ResumeTiming();
 
         spio::vector_sink sink{str};
         using stream_type =
@@ -117,6 +119,8 @@ static void print_spio_write_stream_ref(benchmark::State& state)
             stream_type::sink_type(sink, spio::buffer_mode::none));
         spio::basic_stream_ref<spio::character<char>, spio::writable_tag> ref(
             s);
+        state.ResumeTiming();
+
         for (auto& n : data) {
             spio::write(ref, gsl::as_bytes(gsl::make_span(
                                  &n[0], static_cast<int64_t>(n.size()))));
@@ -135,7 +139,6 @@ static void print_spio_stream(benchmark::State& state)
         state.PauseTiming();
         auto data = generate_data(static_cast<size_t>(state.range(0)));
         std::vector<gsl::byte> str;
-        state.ResumeTiming();
 
         spio::vector_sink sink{str};
         using stream_type =
@@ -145,6 +148,8 @@ static void print_spio_stream(benchmark::State& state)
                       stream_type::output_base{}, stream_type::chain_type{});
         s.sink_storage() = nonstd::make_optional(
             stream_type::sink_type(sink, spio::buffer_mode::none));
+        state.ResumeTiming();
+
         for (auto& n : data) {
             spio::print(s, "{}", n);
             bytes += n.length();
@@ -162,7 +167,6 @@ static void print_spio_stream_ref(benchmark::State& state)
         state.PauseTiming();
         auto data = generate_data(static_cast<size_t>(state.range(0)));
         std::vector<gsl::byte> str;
-        state.ResumeTiming();
 
         spio::vector_sink sink{str};
         using stream_type =
@@ -174,6 +178,8 @@ static void print_spio_stream_ref(benchmark::State& state)
             stream_type::sink_type(sink, spio::buffer_mode::none));
         spio::basic_stream_ref<spio::character<char>, spio::writable_tag> ref(
             s);
+        state.ResumeTiming();
+
         for (auto& n : data) {
             spio::print(ref, "{}", n);
             bytes += n.length();
@@ -218,6 +224,24 @@ static void print_insert(benchmark::State& state)
     }
     state.SetBytesProcessed(static_cast<int64_t>(bytes));
 }
+static void print_stringstream(benchmark::State& state)
+{
+    size_t bytes = 0;
+    for (auto _ : state) {
+        state.PauseTiming();
+        auto data = generate_data(static_cast<size_t>(state.range(0)));
+        std::ostringstream ss;
+        state.ResumeTiming();
+
+        for (auto& n : data) {
+            ss << n;
+            bytes += n.length();
+            benchmark::DoNotOptimize(ss);
+        }
+        benchmark::DoNotOptimize(ss.str());
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(bytes));
+}
 
 BENCHMARK(print_spio_write_device)->Range(8, 8 << 8);
 BENCHMARK(print_spio_write_stream)->Range(8, 8 << 8);
@@ -226,3 +250,4 @@ BENCHMARK(print_spio_stream)->Range(8, 8 << 8);
 BENCHMARK(print_spio_stream_ref)->Range(8, 8 << 8);
 BENCHMARK(print_fmt)->Range(8, 8 << 8);
 BENCHMARK(print_insert)->Range(8, 8 << 8);
+BENCHMARK(print_stringstream)->Range(8, 8 << 8);

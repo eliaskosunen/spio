@@ -43,12 +43,6 @@
 
 #include "gsl.hpp"
 
-SPIO_BEGIN_NAMESPACE
-
-namespace gsl = ::gsl;
-
-SPIO_END_NAMESPACE
-
 #if SPIO_CLANG
 #pragma clang diagnostic pop
 #endif

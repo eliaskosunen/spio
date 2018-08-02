@@ -54,7 +54,7 @@ namespace detail {
         {
             return m_buf.data() != nullptr;
         }
-        SPIO_CONSTEXPR14 nonstd::expected<void, failure> close() noexcept
+        nonstd::expected<void, failure> close() noexcept
         {
             m_buf = span_type{};
             return {};
@@ -94,8 +94,7 @@ namespace detail {
             return n;
         }
 
-        SPIO_CONSTEXPR14 nonstd::expected<streamsize, failure> extent() const
-            noexcept
+        nonstd::expected<streamsize, failure> extent() const noexcept
         {
             return m_buf.size();
         }

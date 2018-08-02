@@ -170,11 +170,18 @@ public:
     }
     result putback(gsl::span<gsl::byte> s)
     {
+#if SPIO_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-overflow"
+#endif
         if (s.size() > free_space()) {
             return make_result(m_buffer.write_tail(s.first(free_space())),
                                out_of_memory);
         }
         return m_buffer.write_tail(s);
+#if SPIO_GCC
+#pragma GCC diagnostic pop
+#endif
     }
 
 private:

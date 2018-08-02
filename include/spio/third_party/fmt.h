@@ -28,6 +28,7 @@
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wstrict-overflow"
 #endif
 
 #if SPIO_CLANG
@@ -48,12 +49,6 @@
 #endif
 
 #include "fmt/format.h"
-
-SPIO_BEGIN_NAMESPACE
-
-namespace fmt = ::fmt;
-
-SPIO_END_NAMESPACE
 
 #if SPIO_MSVC
 #pragma warning(pop)

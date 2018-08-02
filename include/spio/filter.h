@@ -145,7 +145,7 @@ public:
     }
     SPIO_CONSTEXPR bool empty() const noexcept
     {
-        return size() != 0;
+        return size() == 0;
     }
 
     template <typename F>

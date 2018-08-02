@@ -114,7 +114,7 @@ private:
 
 using result = basic_result<streamsize, failure>;
 
-SPIO_CONSTEXPR14 result make_result(streamsize s, failure e) noexcept
+inline result make_result(streamsize s, failure e) noexcept
 {
     return result(s, std::move(e));
 }

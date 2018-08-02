@@ -30,12 +30,6 @@
 
 #include "nonstd/optional.hpp"
 
-SPIO_BEGIN_NAMESPACE
-
-namespace nonstd = ::nonstd;
-
-SPIO_END_NAMESPACE
-
 #if SPIO_GCC
 #pragma GCC diagnostic pop
 #endif

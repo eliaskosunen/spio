@@ -51,12 +51,10 @@ namespace detail {
 
         SPIO_CONSTEXPR ring_base_posix() = default;
 
-        SPIO_CONSTEXPR14 ring_base_posix(const ring_base_posix&) = delete;
-        SPIO_CONSTEXPR14 ring_base_posix& operator=(const ring_base_posix&) =
-            delete;
-        SPIO_CONSTEXPR14 ring_base_posix(ring_base_posix&&) noexcept = default;
-        SPIO_CONSTEXPR14 ring_base_posix& operator=(
-            ring_base_posix&&) noexcept = default;
+        ring_base_posix(const ring_base_posix&) = delete;
+        ring_base_posix& operator=(const ring_base_posix&) = delete;
+        ring_base_posix(ring_base_posix&&) noexcept = default;
+        ring_base_posix& operator=(ring_base_posix&&) noexcept = default;
 
         ~ring_base_posix() noexcept
         {
@@ -173,8 +171,7 @@ namespace detail {
             return n;
         }
 
-        SPIO_CONSTEXPR14 gsl::span<const value_type> peek(size_type n) const
-            noexcept
+        gsl::span<const value_type> peek(size_type n) const noexcept
         {
             Expects(size() >= n);
             return gsl::make_span(m_ptr + m_tail - n, n);
@@ -186,39 +183,39 @@ namespace detail {
             m_empty = true;
         }
 
-        SPIO_CONSTEXPR size_type in_use() const noexcept
+        SPIO_CONSTEXPR14 size_type in_use() const noexcept
         {
             return m_tail <= m_head ? m_head - m_tail
                                     : m_size - (m_tail - m_head);
         }
-        SPIO_CONSTEXPR size_type free_space() const noexcept
+        SPIO_CONSTEXPR14 size_type free_space() const noexcept
         {
             return m_size - in_use();
         }
 
-        SPIO_CONSTEXPR size_type size() const noexcept
+        SPIO_CONSTEXPR14 size_type size() const noexcept
         {
             return m_size;
         }
-        SPIO_CONSTEXPR bool empty() const noexcept
+        SPIO_CONSTEXPR14 bool empty() const noexcept
         {
             return m_head == m_tail && m_empty;
         }
 
-        SPIO_CONSTEXPR14 value_type* data() noexcept
+        value_type* data() noexcept
         {
             return m_ptr;
         }
-        SPIO_CONSTEXPR const value_type* data() const noexcept
+        const value_type* data() const noexcept
         {
             return m_ptr;
         }
 
-        SPIO_CONSTEXPR size_type head() const noexcept
+        SPIO_CONSTEXPR14 size_type head() const noexcept
         {
             return m_head;
         }
-        SPIO_CONSTEXPR size_type tail() const noexcept
+        SPIO_CONSTEXPR14 size_type tail() const noexcept
         {
             return m_tail;
         }
@@ -241,7 +238,7 @@ namespace detail {
                 return {m_ring, m_n, 1};
             }
 
-            SPIO_CONSTEXPR14 gsl::span<const gsl::byte> operator*() noexcept
+            gsl::span<const gsl::byte> operator*() noexcept
             {
                 return gsl::make_span(m_ring.data() + m_ring.tail(), m_n);
             }
@@ -300,7 +297,7 @@ namespace detail {
                 return {m_ring, m_n, 1};
             }
 
-            SPIO_CONSTEXPR14 gsl::span<gsl::byte> operator*() noexcept
+            gsl::span<gsl::byte> operator*() noexcept
             {
                 return gsl::make_span(m_ring.data() + m_ring.head(), m_n);
             }
@@ -461,8 +458,7 @@ namespace detail {
             return read(s) + n;
         }
 
-        SPIO_CONSTEXPR14 gsl::span<const value_type> peek(size_type n) const
-            noexcept
+        gsl::span<const value_type> peek(size_type n) const noexcept
         {
             Expects(size() >= n);
             return gsl::make_span(m_buf.get() + m_tail - n, n);
@@ -474,39 +470,39 @@ namespace detail {
             m_empty = true;
         }
 
-        SPIO_CONSTEXPR size_type size() const noexcept
+        SPIO_CONSTEXPR14 size_type size() const noexcept
         {
             return m_size;
         }
-        SPIO_CONSTEXPR bool empty() const noexcept
+        SPIO_CONSTEXPR14 bool empty() const noexcept
         {
             return m_head == m_tail && m_empty;
         }
 
-        SPIO_CONSTEXPR size_type in_use() const noexcept
+        SPIO_CONSTEXPR14 size_type in_use() const noexcept
         {
             return m_tail <= m_head ? m_head - m_tail
                                     : m_size - (m_tail - m_head);
         }
-        SPIO_CONSTEXPR size_type free_space() const noexcept
+        SPIO_CONSTEXPR14 size_type free_space() const noexcept
         {
             return m_size - in_use();
         }
 
-        SPIO_CONSTEXPR14 value_type* data() noexcept
+        value_type* data() noexcept
         {
             return m_buf.get();
         }
-        SPIO_CONSTEXPR const value_type* data() const noexcept
+        const value_type* data() const noexcept
         {
             return m_buf.get();
         }
 
-        SPIO_CONSTEXPR size_type head() const noexcept
+        SPIO_CONSTEXPR14 size_type head() const noexcept
         {
             return m_head;
         }
-        SPIO_CONSTEXPR size_type tail() const noexcept
+        SPIO_CONSTEXPR14 size_type tail() const noexcept
         {
             return m_tail;
         }
@@ -524,12 +520,12 @@ namespace detail {
             {
                 return *this;
             }
-            SPIO_CONSTEXPR direct_read_t end() const noexcept
+            SPIO_CONSTEXPR14 direct_read_t end() const noexcept
             {
                 return {m_ring, m_n, two_ranges() ? 2 : 1};
             }
 
-            SPIO_CONSTEXPR14 gsl::span<const gsl::byte> operator*() noexcept
+            gsl::span<const gsl::byte> operator*() noexcept
             {
                 if (two_ranges()) {
                     if (m_i == 0) {
@@ -567,7 +563,7 @@ namespace detail {
             }
 
         private:
-            SPIO_CONSTEXPR bool two_ranges() const noexcept
+            SPIO_CONSTEXPR14 bool two_ranges() const noexcept
             {
                 return m_ring.head() <= m_ring.tail() &&
                        m_n < m_ring.size() - m_ring.tail();
@@ -597,12 +593,12 @@ namespace detail {
             {
                 return *this;
             }
-            SPIO_CONSTEXPR direct_write_t end() const noexcept
+            SPIO_CONSTEXPR14 direct_write_t end() const noexcept
             {
                 return {m_ring, m_n, two_ranges() ? 2 : 1};
             }
 
-            SPIO_CONSTEXPR14 gsl::span<gsl::byte> operator*() noexcept
+            gsl::span<gsl::byte> operator*() noexcept
             {
                 if (two_ranges()) {
                     if (m_i == 0) {
@@ -640,7 +636,7 @@ namespace detail {
             }
 
         private:
-            SPIO_CONSTEXPR bool two_ranges() const noexcept
+            SPIO_CONSTEXPR14 bool two_ranges() const noexcept
             {
                 return m_ring.tail() <= m_ring.head() &&
                        m_n > m_ring.size() - m_ring.head();
@@ -748,12 +744,12 @@ public:
         return m_buf.free_space() / static_cast<size_type>(sizeof(value_type));
     }
 
-    SPIO_CONSTEXPR14 gsl::span<value_type> span() noexcept
+    gsl::span<value_type> span() noexcept
     {
         return gsl::make_span(reinterpret_cast<value_type*>(m_buf.data()),
                               size());
     }
-    SPIO_CONSTEXPR14 gsl::span<const value_type> span() const noexcept
+    gsl::span<const value_type> span() const noexcept
     {
         return gsl::make_span(reinterpret_cast<const value_type*>(m_buf.data()),
                               size());
@@ -778,11 +774,11 @@ public:
         }
     }
 
-    SPIO_CONSTEXPR14 gsl::span<value_type> span() noexcept
+    gsl::span<value_type> span() noexcept
     {
         return gsl::make_span(data(), size());
     }
-    SPIO_CONSTEXPR14 gsl::span<const value_type> span() const noexcept
+    gsl::span<const value_type> span() const noexcept
     {
         return gsl::make_span(data(), size());
     }

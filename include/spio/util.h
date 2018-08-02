@@ -199,8 +199,9 @@ template <typename Container, typename Element>
 class memcpy_back_insert_iterator<
     Container,
     Element,
-    typename std::enable_if<sizeof(Element) ==
-                            sizeof(typename Container::value_type)>::type> {
+    typename std::enable_if<
+        !std::is_same<typename Container::value_type, gsl::byte>::value &&
+        sizeof(Element) == sizeof(typename Container::value_type)>::type> {
 public:
     using value_type = void;
     using difference_type = void;
@@ -246,8 +247,57 @@ private:
     container_type* m_container;
 };
 
+template <typename Container, typename Element>
+class memcpy_back_insert_iterator<
+    Container,
+    Element,
+    typename std::enable_if<
+        std::is_same<typename Container::value_type, gsl::byte>::value &&
+        sizeof(Element) == sizeof(typename Container::value_type)>::type> {
+public:
+    using value_type = void;
+    using difference_type = void;
+    using pointer = void;
+    using reference = void;
+    using iterator_category = std::output_iterator_tag;
+
+    using container_type = Container;
+    using element_type = Element;
+    using container_value_type = typename Container::value_type;
+
+    static_assert(sizeof(element_type) % sizeof(container_value_type) == 0,
+                  "Element size not divisible by Container value_type");
+
+    memcpy_back_insert_iterator(container_type& c) noexcept
+        : m_container(std::addressof(c))
+    {
+    }
+
+    memcpy_back_insert_iterator& operator=(const element_type& value) noexcept
+    {
+        m_container->push_back(gsl::to_byte(value));
+        return *this;
+    }
+
+    memcpy_back_insert_iterator& operator*()
+    {
+        return *this;
+    }
+
+    memcpy_back_insert_iterator& operator++()
+    {
+        return *this;
+    }
+    memcpy_back_insert_iterator& operator++(int)
+    {
+        return *this;
+    }
+
+private:
+    container_type* m_container;
+};
+
 SPIO_END_NAMESPACE
 }  // namespace spio
 
 #endif  // SPIO_UTIL_H
-
