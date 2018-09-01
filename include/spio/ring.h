@@ -464,27 +464,27 @@ namespace detail {
             return gsl::make_span(m_buf.get() + m_tail - n, n);
         }
 
-        SPIO_CONSTEXPR14 void clear() noexcept
+        void clear() noexcept
         {
             m_head = m_tail;
             m_empty = true;
         }
 
-        SPIO_CONSTEXPR14 size_type size() const noexcept
+        size_type size() const noexcept
         {
             return m_size;
         }
-        SPIO_CONSTEXPR14 bool empty() const noexcept
+        bool empty() const noexcept
         {
             return m_head == m_tail && m_empty;
         }
 
-        SPIO_CONSTEXPR14 size_type in_use() const noexcept
+        size_type in_use() const noexcept
         {
             return m_tail <= m_head ? m_head - m_tail
                                     : m_size - (m_tail - m_head);
         }
-        SPIO_CONSTEXPR14 size_type free_space() const noexcept
+        size_type free_space() const noexcept
         {
             return m_size - in_use();
         }
@@ -498,11 +498,11 @@ namespace detail {
             return m_buf.get();
         }
 
-        SPIO_CONSTEXPR14 size_type head() const noexcept
+        size_type head() const noexcept
         {
             return m_head;
         }
-        SPIO_CONSTEXPR14 size_type tail() const noexcept
+        size_type tail() const noexcept
         {
             return m_tail;
         }
@@ -516,11 +516,11 @@ namespace detail {
             {
             }
 
-            SPIO_CONSTEXPR14 direct_read_t begin() noexcept
+            direct_read_t begin() noexcept
             {
                 return *this;
             }
-            SPIO_CONSTEXPR14 direct_read_t end() const noexcept
+            direct_read_t end() const noexcept
             {
                 return {m_ring, m_n, two_ranges() ? 2 : 1};
             }
@@ -538,32 +538,32 @@ namespace detail {
                 return gsl::make_span(m_ring.data() + m_ring.tail(), m_n);
             }
 
-            SPIO_CONSTEXPR14 direct_read_t& operator++() noexcept
+            direct_read_t& operator++() noexcept
             {
                 m_ring.move_tail(m_n);
                 ++m_i;
                 return *this;
             }
-            SPIO_CONSTEXPR14 direct_read_t operator++(int) noexcept
+            direct_read_t operator++(int) noexcept
             {
                 direct_read_t tmp(*this);
                 operator++();
                 return tmp;
             }
 
-            SPIO_CONSTEXPR bool operator==(const direct_read_t& r) const
+            bool operator==(const direct_read_t& r) const
                 noexcept
             {
                 return m_i == r.m_i;
             }
-            SPIO_CONSTEXPR bool operator!=(const direct_read_t& r) const
+            bool operator!=(const direct_read_t& r) const
                 noexcept
             {
                 return !(*this == r);
             }
 
         private:
-            SPIO_CONSTEXPR14 bool two_ranges() const noexcept
+            bool two_ranges() const noexcept
             {
                 return m_ring.head() <= m_ring.tail() &&
                        m_n < m_ring.size() - m_ring.tail();
@@ -574,7 +574,7 @@ namespace detail {
             size_type m_i;
         };
 
-        SPIO_CONSTEXPR14 direct_read_t direct_read(size_type n) noexcept
+        direct_read_t direct_read(size_type n) noexcept
         {
             Expects(n <= in_use());
             return direct_read_t(*this, n);
@@ -582,18 +582,18 @@ namespace detail {
 
         class direct_write_t {
         public:
-            SPIO_CONSTEXPR direct_write_t(ring_base_std& r,
+            direct_write_t(ring_base_std& r,
                                           size_type n,
                                           size_type i = 0) noexcept
                 : m_ring(r), m_n(n), m_i(i)
             {
             }
 
-            SPIO_CONSTEXPR14 direct_write_t begin() noexcept
+            direct_write_t begin() noexcept
             {
                 return *this;
             }
-            SPIO_CONSTEXPR14 direct_write_t end() const noexcept
+            direct_write_t end() const noexcept
             {
                 return {m_ring, m_n, two_ranges() ? 2 : 1};
             }
@@ -611,32 +611,32 @@ namespace detail {
                 return gsl::make_span(m_ring.data() + m_ring.head(), m_n);
             }
 
-            SPIO_CONSTEXPR14 direct_write_t& operator++() noexcept
+            direct_write_t& operator++() noexcept
             {
                 m_ring.move_head(m_n);
                 ++m_i;
                 return *this;
             }
-            SPIO_CONSTEXPR14 direct_write_t operator++(int) noexcept
+            direct_write_t operator++(int) noexcept
             {
                 direct_write_t tmp(*this);
                 operator++();
                 return tmp;
             }
 
-            SPIO_CONSTEXPR bool operator==(const direct_write_t& r) const
+            bool operator==(const direct_write_t& r) const
                 noexcept
             {
                 return m_i == r.m_i;
             }
-            SPIO_CONSTEXPR bool operator!=(const direct_write_t& r) const
+            bool operator!=(const direct_write_t& r) const
                 noexcept
             {
                 return !(*this == r);
             }
 
         private:
-            SPIO_CONSTEXPR14 bool two_ranges() const noexcept
+            bool two_ranges() const noexcept
             {
                 return m_ring.tail() <= m_ring.head() &&
                        m_n > m_ring.size() - m_ring.head();
@@ -647,20 +647,20 @@ namespace detail {
             size_type m_i;
         };
 
-        SPIO_CONSTEXPR14 direct_write_t direct_write(size_type n) noexcept
+        direct_write_t direct_write(size_type n) noexcept
         {
             Expects(n <= free_space());
             return direct_write_t(*this, n);
         }
 
-        SPIO_CONSTEXPR14 void move_head(size_type off) noexcept
+        void move_head(size_type off) noexcept
         {
             m_head += off;
             m_head &= (m_size - 1);
             m_empty = false;
             Ensures(m_head > m_tail);
         }
-        SPIO_CONSTEXPR14 void move_tail(size_type off) noexcept
+        void move_tail(size_type off) noexcept
         {
             Expects(m_tail + off <= m_head);
             m_tail += off;
@@ -721,25 +721,25 @@ public:
             s.size() / static_cast<std::ptrdiff_t>(sizeof(value_type)));
     }
 
-    SPIO_CONSTEXPR14 void clear() noexcept
+    void clear() noexcept
     {
         m_buf.clear();
     }
 
-    SPIO_CONSTEXPR size_type size() const noexcept
+    size_type size() const noexcept
     {
         return m_buf.size() / static_cast<size_type>(sizeof(value_type));
     }
-    SPIO_CONSTEXPR bool empty() const noexcept
+    bool empty() const noexcept
     {
         return m_buf.empty();
     }
 
-    SPIO_CONSTEXPR size_type in_use() const noexcept
+    size_type in_use() const noexcept
     {
         return m_buf.in_use() / static_cast<size_type>(sizeof(value_type));
     }
-    SPIO_CONSTEXPR size_type free_space() const noexcept
+    size_type free_space() const noexcept
     {
         return m_buf.free_space() / static_cast<size_type>(sizeof(value_type));
     }

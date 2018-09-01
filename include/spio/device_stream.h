@@ -306,7 +306,7 @@ public:
     basic_memory_instream() : base(memory_source(), typename base::chain_type{})
     {
     }
-    basic_memory_instream(memory_sink::span_type s)
+    basic_memory_instream(memory_source::span_type s)
         : base(memory_source(s), typename base::chain_type{})
     {
     }

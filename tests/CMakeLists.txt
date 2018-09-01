@@ -104,6 +104,7 @@ add_spio_test(sink_buffer)
 add_spio_test(filter)
 add_spio_test(print)
 add_spio_test(stream_ref)
+add_spio_test(scanner)
 
 print_target_properties(empty)
 

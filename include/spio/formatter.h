@@ -46,29 +46,6 @@ struct basic_formatter {
     }
 };
 
-namespace detail {
-    template <typename T, typename = int>
-    struct print_write_enable : std::false_type {
-    };
-    template <typename T>
-    struct print_write_enable<
-        T,
-        void_t<decltype(
-            write(std::declval<T&>(), std::declval<std::vector<gsl::byte>>()))>>
-        : std::true_type {
-    };
-
-    template <typename T, typename = int>
-    struct print_put_enable : std::false_type {
-    };
-    template <typename T>
-    struct print_put_enable<
-        T,
-        void_t<decltype(put(std::declval<T&>(), std::declval<gsl::byte>()))>>
-        : std::true_type {
-    };
-}  // namespace detail
-
 template <typename Stream, typename... Args>
 auto print(Stream& s,
            basic_string_view<typename Stream::char_type> f,

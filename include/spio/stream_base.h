@@ -122,6 +122,10 @@ struct seekable_tag : absolute_seekable_tag, relative_seekable_tag {
 struct tellable_tag : virtual any_tag {
 };
 
+template <typename... Bases>
+struct make_tag : virtual Bases... {
+};
+
 template <typename Stream>
 using is_writable_stream = is_writable<typename Stream::device_type>;
 template <typename Stream>

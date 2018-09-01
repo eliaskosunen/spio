@@ -41,6 +41,7 @@ enum error {
     out_of_range,
     out_of_memory,
     sentry_error,
+    scanner_error,
     unimplemented,
     unreachable,
     undefined_error
@@ -87,6 +88,8 @@ struct error_category : public std::error_category {
                 return "Out of memory";
             case sentry_error:
                 return "Sentry error";
+            case scanner_error:
+                return "Scanner error";
             case unimplemented:
                 return "Unimplemented";
             case unreachable:

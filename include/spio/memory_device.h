@@ -84,13 +84,17 @@ namespace detail {
             Expects(is_open());
             return gsl::as_bytes(m_buf);
         }
-        result read_at(gsl::span<gsl::byte> s, streampos pos)
+        result read_at(gsl::span<gsl::byte> s, streampos pos, bool& eof)
         {
             Expects(is_open());
             auto ext = extent();
             auto n = std::min(static_cast<streamoff>(ext.value() - pos),
                               static_cast<streamoff>(s.size()));
-            std::copy(m_buf.begin() + pos, m_buf.begin() + pos + n, s.begin());
+            if (n < streamoff(s.size())) {
+                eof = true;
+            }
+            std::copy(m_buf.begin() + pos.operator streamoff(),
+                      m_buf.begin() + pos.operator streamoff() + n, s.begin());
             return n;
         }
 

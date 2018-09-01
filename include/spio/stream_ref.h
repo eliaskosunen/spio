@@ -25,6 +25,9 @@
 namespace spio {
 SPIO_BEGIN_NAMESPACE
 
+template <typename Char>
+struct basic_scanner;
+
 namespace detail {
     template <typename Char>
     struct erased_stream_storage_base {
@@ -59,6 +62,8 @@ namespace detail {
         virtual result read(gsl::span<gsl::byte> buf) = 0;
         virtual result read_at(gsl::span<gsl::byte> buf, streampos pos) = 0;
         virtual result get(gsl::byte& data) = 0;
+
+        virtual basic_scanner<Char> scanner() = 0;
 
         virtual bool putback(gsl::span<const gsl::byte> data) = 0;
         virtual bool putback(gsl::byte data) = 0;
@@ -175,6 +180,11 @@ namespace detail {
         result get(gsl::byte& data) override
         {
             return _get(data);
+        }
+
+        basic_scanner<typename Stream::character_type> scanner() override
+        {
+            return _scanner();
         }
 
         bool putback(gsl::span<const gsl::byte> buf) override
@@ -363,6 +373,15 @@ namespace detail {
         }
 
         template <typename S = Stream>
+        auto _scanner() -> typename std::enable_if<
+            is_source<typename S::device_type>::value,
+            basic_scanner<typename S::character_type>>::type;
+        template <typename S = Stream>
+        [[noreturn]] auto _scanner() -> typename std::enable_if<
+            !is_source<typename S::device_type>::value,
+            basic_scanner<typename S::character_type>>::type;
+
+        template <typename S = Stream>
         auto _putback(gsl::span<const gsl::byte> buf) ->
             typename std::enable_if<is_putbackable_span_stream<S>::value,
                                     bool>::type
@@ -446,7 +465,7 @@ namespace detail {
 
     public:
         using base = erased_stream_storage_base<Char>;
-        using pointer = std::unique_ptr<base>;
+        using pointer = std::shared_ptr<base>;
 
         basic_erased_stream() = default;
         basic_erased_stream(pointer p) : m_ptr(std::move(p)) {}
@@ -456,7 +475,7 @@ namespace detail {
             template <typename...> class Chain,
             typename T = erased_stream_storage<stream_type<Device, Chain>>>
         basic_erased_stream(stream_type<Device, Chain>& s)
-            : m_ptr(make_unique<T>(s))
+            : m_ptr(std::make_shared<T>(s))
         {
         }
 
@@ -466,7 +485,7 @@ namespace detail {
             typename T = erased_stream_storage<stream_type<Device, Chain>>>
         void set(stream_type<Device, Chain>& s)
         {
-            m_ptr = make_unique<T>(s);
+            m_ptr = std::make_shared<T>(s);
         }
 
         bool valid() const
@@ -655,7 +674,7 @@ result stream<Device, Char, Chain>::output_sentry::_handle_tied(
 
 template <typename Device, typename Char, template <typename...> class Chain>
 result stream<Device, Char, Chain>::input_sentry::_handle_tied(
-    stream<Device, Char, Chain>& s) 
+    stream<Device, Char, Chain>& s)
 {
     if (s.tie()) {
         return flush(*s.tie());
@@ -664,23 +683,22 @@ result stream<Device, Char, Chain>::input_sentry::_handle_tied(
 }
 
 template <typename Char, typename Properties>
-auto write(basic_stream_ref<Char, Properties>& s, std::vector<gsl::byte> buf) ->
+auto write(basic_stream_ref<Char, Properties> s, std::vector<gsl::byte> buf) ->
     typename std::enable_if<detail::has_tag<Properties, writable_tag>::value,
                             result>::type
 {
     return s->write(std::move(buf));
 }
 template <typename Char, typename Properties>
-auto write(basic_stream_ref<Char, Properties>& s,
-           gsl::span<const gsl::byte> buf) ->
-    typename std::enable_if<detail::has_tag<Properties, writable_tag>::value,
-                            result>::type
+auto write(basic_stream_ref<Char, Properties> s, gsl::span<const gsl::byte> buf)
+    -> typename std::enable_if<detail::has_tag<Properties, writable_tag>::value,
+                               result>::type
 {
     return s->write(buf);
 }
 
 template <typename Char, typename Properties>
-auto write_at(basic_stream_ref<Char, Properties>& s,
+auto write_at(basic_stream_ref<Char, Properties> s,
               std::vector<gsl::byte> buf,
               streampos pos) ->
     typename std::enable_if<
@@ -690,7 +708,7 @@ auto write_at(basic_stream_ref<Char, Properties>& s,
     return s->write_at(std::move(buf), pos);
 }
 template <typename Char, typename Properties>
-auto write_at(basic_stream_ref<Char, Properties>& s,
+auto write_at(basic_stream_ref<Char, Properties> s,
               gsl::span<const gsl::byte> data,
               streampos pos) ->
     typename std::enable_if<
@@ -701,7 +719,7 @@ auto write_at(basic_stream_ref<Char, Properties>& s,
 }
 
 template <typename Char, typename Properties>
-auto put(basic_stream_ref<Char, Properties>& s, gsl::byte data) ->
+auto put(basic_stream_ref<Char, Properties> s, gsl::byte data) ->
     typename std::enable_if<
         detail::has_tag<Properties, byte_writable_tag>::value,
         result>::type
@@ -711,20 +729,20 @@ auto put(basic_stream_ref<Char, Properties>& s, gsl::byte data) ->
 
 template <typename Char, typename Properties>
 basic_formatter<typename Char::type> get_formatter(
-    basic_stream_ref<Char, Properties>& s)
+    basic_stream_ref<Char, Properties> s)
 {
     return s->formatter();
 }
 
 template <typename Char, typename Properties>
-auto flush(basic_stream_ref<Char, Properties>& s) ->
+auto flush(basic_stream_ref<Char, Properties> s) ->
     typename std::enable_if<detail::has_tag<Properties, flushable_tag>::value,
                             result>::type
 {
     return s->flush();
 }
 template <typename Char, typename Properties>
-auto sync(basic_stream_ref<Char, Properties>& s) ->
+auto sync(basic_stream_ref<Char, Properties> s) ->
     typename std::enable_if<detail::has_tag<Properties, syncable_tag>::value,
                             nonstd::expected<void, failure>>::type
 {
@@ -732,7 +750,7 @@ auto sync(basic_stream_ref<Char, Properties>& s) ->
 }
 
 template <typename Char, typename Properties>
-auto read(basic_stream_ref<Char, Properties>& s, gsl::span<gsl::byte> data) ->
+auto read(basic_stream_ref<Char, Properties> s, gsl::span<gsl::byte> data) ->
     typename std::enable_if<detail::has_tag<Properties, readable_tag>::value,
                             result>::type
 {
@@ -740,7 +758,7 @@ auto read(basic_stream_ref<Char, Properties>& s, gsl::span<gsl::byte> data) ->
 }
 
 template <typename Char, typename Properties>
-auto read_at(basic_stream_ref<Char, Properties>& s,
+auto read_at(basic_stream_ref<Char, Properties> s,
              gsl::span<gsl::byte> data,
              streampos pos) ->
     typename std::enable_if<
@@ -751,7 +769,7 @@ auto read_at(basic_stream_ref<Char, Properties>& s,
 }
 
 template <typename Char, typename Properties>
-auto get(basic_stream_ref<Char, Properties>& s, gsl::byte& data) ->
+auto get(basic_stream_ref<Char, Properties> s, gsl::byte& data) ->
     typename std::enable_if<
         detail::has_tag<Properties, byte_readable_tag>::value,
         result>::type
@@ -760,16 +778,21 @@ auto get(basic_stream_ref<Char, Properties>& s, gsl::byte& data) ->
 }
 
 template <typename Char, typename Properties>
-auto putback(basic_stream_ref<Char, Properties>& s,
-             gsl::span<const gsl::byte> d) ->
-    typename std::enable_if<
+basic_scanner<Char> get_scanner(basic_stream_ref<Char, Properties> s)
+{
+    return s->scanner();
+}
+
+template <typename Char, typename Properties>
+auto putback(basic_stream_ref<Char, Properties> s, gsl::span<const gsl::byte> d)
+    -> typename std::enable_if<
         detail::has_tag<Properties, putbackable_span_tag>::value,
         bool>::type
 {
     return s->putback(d);
 }
 template <typename Char, typename Properties>
-auto putback(basic_stream_ref<Char, Properties>& s, gsl::byte d) ->
+auto putback(basic_stream_ref<Char, Properties> s, gsl::byte d) ->
     typename std::enable_if<
         detail::has_tag<Properties, putbackable_byte_tag>::value,
         bool>::type
@@ -778,7 +801,7 @@ auto putback(basic_stream_ref<Char, Properties>& s, gsl::byte d) ->
 }
 
 template <typename Char, typename Properties>
-auto seek(basic_stream_ref<Char, Properties>& s,
+auto seek(basic_stream_ref<Char, Properties> s,
           streampos pos,
           inout which = in | out) ->
     typename std::enable_if<
@@ -788,7 +811,7 @@ auto seek(basic_stream_ref<Char, Properties>& s,
     return s->seek(pos, which);
 }
 template <typename Char, typename Properties>
-auto seek(basic_stream_ref<Char, Properties>& s,
+auto seek(basic_stream_ref<Char, Properties> s,
           streamoff off,
           seekdir dir,
           inout which = in | out) ->
@@ -799,7 +822,7 @@ auto seek(basic_stream_ref<Char, Properties>& s,
     return s->seek(off, dir, which);
 }
 template <typename Char, typename Properties>
-auto tell(basic_stream_ref<Char, Properties>& s, inout which = in | out) ->
+auto tell(basic_stream_ref<Char, Properties> s, inout which = in | out) ->
     typename std::enable_if<detail::has_tag<Properties, tellable_tag>::value,
                             nonstd::expected<streampos, failure>>::type
 {

@@ -134,10 +134,10 @@ template <typename Device>
 using is_readable = is_detected<readable_op, Device>;
 
 template <typename Device>
-using ra_readable_op =
-    decltype(std::declval<Device>().read(std::declval<gsl::span<gsl::byte>>(),
-                                         std::declval<streampos>(),
-                                         std::declval<bool&>()));
+using ra_readable_op = decltype(
+    std::declval<Device>().read_at(std::declval<gsl::span<gsl::byte>>(),
+                                   std::declval<streampos>(),
+                                   std::declval<bool&>()));
 template <typename Device>
 using is_random_access_readable = is_detected<ra_readable_op, Device>;
 

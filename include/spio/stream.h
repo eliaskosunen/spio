@@ -31,6 +31,9 @@ namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename CharT>
+struct basic_scanner;
+
+template <typename CharT>
 struct character {
     using type = CharT;
 
@@ -144,17 +147,26 @@ namespace detail {
         nonstd::optional<sink_type> m_sink;
     };
 
-    template <typename Device, typename Enable = void>
+    template <typename Device, typename Char, typename Enable = void>
     class input_stream_base {
     public:
+        using scanner_type = basic_scanner<Char>;
+
         input_stream_base() = default;
+
+        SPIO_CONSTEXPR scanner_type scanner() const noexcept
+        {
+            return scanner_type{};
+        }
     };
-    template <typename Device>
+    template <typename Device, typename Char>
     class input_stream_base<
         Device,
+        Char,
         typename std::enable_if<is_readable<Device>::value>::type> {
     public:
         using source_type = basic_buffered_readable<Device>;
+        using scanner_type = basic_scanner<Char>;
 
         SPIO_CONSTEXPR input_stream_base() = default;
         SPIO_CONSTEXPR input_stream_base(source_type s) : m_source(std::move(s))
@@ -177,6 +189,11 @@ namespace detail {
             return m_source;
         }
 
+        SPIO_CONSTEXPR scanner_type scanner() const noexcept
+        {
+            return scanner_type{};
+        }
+
     private:
         nonstd::optional<source_type> m_source;
     };
@@ -187,10 +204,10 @@ class basic_stream_ref;
 
 template <typename Device, typename Char, template <typename...> class Chain>
 class stream : public stream_base,
-               public detail::input_stream_base<Device>,
+               public detail::input_stream_base<Device, Char>,
                public detail::output_stream_base<Device, typename Char::type> {
 public:
-    using input_base = detail::input_stream_base<Device>;
+    using input_base = detail::input_stream_base<Device, Char>;
     using output_base = detail::output_stream_base<Device, typename Char::type>;
 
     using character_type = Char;
@@ -461,6 +478,22 @@ result read(Stream& s, gsl::span<gsl::byte> data)
     return r;
 }
 
+namespace detail {
+    template <typename Stream>
+    auto _read_at_putback(Stream& s, gsl::span<gsl::byte> data)
+        -> decltype(putback(std::declval<Stream&>(),
+                            std::declval<gsl::span<gsl::byte>>()),
+                    bool())
+    {
+        return putback(s, data);
+    }
+    template <typename Stream>
+    auto _read_at_putback(Stream&, gsl::span<gsl::byte>) -> bool
+    {
+        return {};
+    }
+}  // namespace detail
+
 template <typename Stream>
 result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
 {
@@ -472,7 +505,7 @@ result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
     auto r =
         s.device().read_at(data, Stream::character_type::to_device(pos), eof);
     if (r.has_error()) {
-        putback(s, data.first(r.value()));
+        detail::_read_at_putback(s, data.first(r.value()));
         return make_result(0, r.error());
     }
     if (eof) {
@@ -482,11 +515,11 @@ result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
         data = data.first(r.value());
         r = s.chain().read(data);
         if (r.has_error()) {
-            putback(s, data);
+            detail::_read_at_putback(s, data);
             return make_result(0, r.error());
         }
         if (r.value() < data.size()) {
-            putback(s, data.subspan(r.value()));
+            detail::_read_at_putback(s, data.subspan(r.value()));
         }
     }
     return r;
@@ -520,6 +553,12 @@ result get(Stream& s, gsl::byte& data)
         }
     }
     return r;
+}
+
+template <typename Stream>
+typename Stream::scanner_type get_scanner(Stream& s)
+{
+    return s.scanner();
 }
 
 template <typename Stream>
