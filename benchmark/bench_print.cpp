@@ -68,7 +68,9 @@ static void print_spio_write_device(benchmark::State& state)
             benchmark::DoNotOptimize(sink);
         }
     }
-    state.SetBytesProcessed(static_cast<int64_t>(bytes));
+    state.counters["Bytes"] = benchmark::Counter(
+        static_cast<int64_t>(bytes), benchmark::Counter::kIsRate,
+        benchmark::Counter::OneK::kIs1024);
 }
 static void print_spio_write_stream(benchmark::State& state)
 {
@@ -98,7 +100,9 @@ static void print_spio_write_stream(benchmark::State& state)
             benchmark::DoNotOptimize(sink);
         }
     }
-    state.SetBytesProcessed(static_cast<int64_t>(bytes));
+    state.counters["Bytes"] = benchmark::Counter(
+        static_cast<int64_t>(bytes), benchmark::Counter::kIsRate,
+        benchmark::Counter::OneK::kIs1024);
 }
 static void print_spio_write_stream_ref(benchmark::State& state)
 {
@@ -128,7 +132,9 @@ static void print_spio_write_stream_ref(benchmark::State& state)
             benchmark::DoNotOptimize(sink);
         }
     }
-    state.SetBytesProcessed(static_cast<int64_t>(bytes));
+    state.counters["Bytes"] = benchmark::Counter(
+        static_cast<int64_t>(bytes), benchmark::Counter::kIsRate,
+        benchmark::Counter::OneK::kIs1024);
 }
 static void print_spio_stream(benchmark::State& state)
 {
@@ -156,7 +162,9 @@ static void print_spio_stream(benchmark::State& state)
             benchmark::DoNotOptimize(sink);
         }
     }
-    state.SetBytesProcessed(static_cast<int64_t>(bytes));
+    state.counters["Bytes"] = benchmark::Counter(
+        static_cast<int64_t>(bytes), benchmark::Counter::kIsRate,
+        benchmark::Counter::OneK::kIs1024);
 }
 static void print_spio_stream_ref(benchmark::State& state)
 {
@@ -185,7 +193,9 @@ static void print_spio_stream_ref(benchmark::State& state)
             benchmark::DoNotOptimize(sink);
         }
     }
-    state.SetBytesProcessed(static_cast<int64_t>(bytes));
+    state.counters["Bytes"] = benchmark::Counter(
+        static_cast<int64_t>(bytes), benchmark::Counter::kIsRate,
+        benchmark::Counter::OneK::kIs1024);
 }
 static void print_fmt(benchmark::State& state)
 {
@@ -202,7 +212,9 @@ static void print_fmt(benchmark::State& state)
             benchmark::DoNotOptimize(str);
         }
     }
-    state.SetBytesProcessed(static_cast<int64_t>(bytes));
+    state.counters["Bytes"] = benchmark::Counter(
+        static_cast<int64_t>(bytes), benchmark::Counter::kIsRate,
+        benchmark::Counter::OneK::kIs1024);
 }
 static void print_insert(benchmark::State& state)
 {
@@ -219,7 +231,9 @@ static void print_insert(benchmark::State& state)
             benchmark::DoNotOptimize(str);
         }
     }
-    state.SetBytesProcessed(static_cast<int64_t>(bytes));
+    state.counters["Bytes"] = benchmark::Counter(
+        static_cast<int64_t>(bytes), benchmark::Counter::kIsRate,
+        benchmark::Counter::OneK::kIs1024);
 }
 static void print_stringstream(benchmark::State& state)
 {
@@ -237,7 +251,9 @@ static void print_stringstream(benchmark::State& state)
         }
         benchmark::DoNotOptimize(ss.str());
     }
-    state.SetBytesProcessed(static_cast<int64_t>(bytes));
+    state.counters["Bytes"] = benchmark::Counter(
+        static_cast<int64_t>(bytes), benchmark::Counter::kIsRate,
+        benchmark::Counter::OneK::kIs1024);
 }
 
 BENCHMARK(print_spio_write_device)->Range(8, 8 << 8);

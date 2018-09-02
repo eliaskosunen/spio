@@ -15,8 +15,8 @@
 // This file is a part of spio:
 //     https://github.com/eliaskosunen/spio
 
-#ifndef SPIO_THIRD_PARTY_AFIO_H
-#define SPIO_THIRD_PARTY_AFIO_H
+#ifndef SPIO_THIRD_PARTY_LLFIO_H
+#define SPIO_THIRD_PARTY_LLFIO_H
 
 #include "../config.h"
 
@@ -53,13 +53,15 @@
 #pragma clang diagnostic ignored "-Wc++17-extensions"
 #endif
 
-#include "afio/afio.hpp"
+#include "llfio/llfio.hpp"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
 
-namespace afio = AFIO_V2_NAMESPACE;
+namespace llfio = LLFIO_V2_NAMESPACE;
 
 SPIO_END_NAMESPACE
+}
 
 #if SPIO_CLANG
 #pragma clang diagnostic pop

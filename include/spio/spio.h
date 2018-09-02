@@ -28,8 +28,8 @@
 #include "memory_device.h"
 #include "stdio_device.h"
 
-#if SPIO_USE_AFIO
-#include "afio_device.h"
+#if SPIO_USE_LLFIO
+#include "llfio_device.h"
 #endif
 
 #include "sink.h"

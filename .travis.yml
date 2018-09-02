@@ -139,8 +139,8 @@ matrix:
                 packages: ["clang-3.4", "g++-6"]
                 sources: ["llvm-toolchain-trusty-3.4", "llvm-toolchain-trusty-3.4-binaries", "ubuntu-toolchain-r-test"]
 
-      # clang++ with afio
-      - env: COMPILER=clang++ AFIO=true
+      # clang++ with llfio
+      - env: COMPILER=clang++ LLFIO=true
         compiler: clang
         addons:
             apt:
@@ -324,8 +324,8 @@ script:
     else
         standards="11 14 17"
         for std in $standards; do
-            if [[ "${AFIO}" = "true" ]]; then
-                run_build -DCMAKE_CXX_STANDARD=$std -DSPIO_USE_AFIO=ON || exit 1
+            if [[ "${LLFIO}" = "true" ]]; then
+                run_build -DCMAKE_CXX_STANDARD=$std -DSPIO_USE_LLFIO=ON || exit 1
             else
                 run_build -DCMAKE_CXX_STANDARD=$std || exit 1
             fi

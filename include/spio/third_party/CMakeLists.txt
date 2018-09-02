@@ -31,16 +31,16 @@ if(NOT has_exp_filesystem)
     set(has_exp_filesystem OFF)
 endif()
 
-if(SPIO_USE_AFIO)
+if(SPIO_USE_LLFIO)
     if((NOT has_std_filesystem) AND (NOT has_exp_filesystem))
-        message(SEND_ERROR "Afio requires std(::experimental)::filesystem")
+        message(SEND_ERROR "LLFIO requires std(::experimental)::filesystem")
     endif()
 
-    add_subdirectory(afio)
-    target_include_directories(afio_sl INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}/afio/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/afio/include/afio/v2.0)
-    target_compile_features(afio_sl PUBLIC cxx_std_17)
-    target_compile_options(afio_sl PRIVATE
+    add_subdirectory(llfio)
+    target_include_directories(llfio_sl INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/llfio/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/llfio/include/llfio/v2.0)
+    target_compile_features(llfio_sl PUBLIC cxx_std_17)
+    target_compile_options(llfio_sl PRIVATE
         $<$<CXX_COMPILER_ID:GNU>: -w>)
 endif()

@@ -15,15 +15,15 @@
 // This file is a part of spio:
 //     https://github.com/eliaskosunen/spio
 
-#ifndef SPIO_AFIO_DEVICE_H
-#define SPIO_AFIO_DEVICE_H
+#ifndef SPIO_LLFIO_DEVICE_H
+#define SPIO_LLFIO_DEVICE_H
 
 #include "config.h"
 
 #include <chrono>
 #include "device.h"
 #include "error.h"
-#include "third_party/afio.h"
+#include "third_party/llfio.h"
 #include "third_party/expected.h"
 #include "third_party/gsl.h"
 #include "third_party/variant.h"
@@ -40,21 +40,21 @@ struct deadline {
 
 namespace detail {
     template <typename Handle>
-    class afio_device {
+    class llfio_device {
     public:
-        using afio_buffer_type = typename Handle::buffer_type;
-        using const_afio_buffer_type = typename Handle::const_buffer_type;
+        using llfio_buffer_type = typename Handle::buffer_type;
+        using const_llfio_buffer_type = typename Handle::const_buffer_type;
 
-        using afio_request_type =
-            typename Handle::template io_request<afio::span<afio_buffer_type>>;
-        using const_afio_request_type = typename Handle::template io_request<
-            afio::span<const_afio_buffer_type>>;
+        using llfio_request_type =
+            typename Handle::template io_request<llfio::span<llfio_buffer_type>>;
+        using const_llfio_request_type = typename Handle::template io_request<
+            llfio::span<const_llfio_buffer_type>>;
 
         using buffer_type = span<byte>;
         using const_buffer_type = span<const byte>;
 
-        constexpr afio_device() = default;
-        afio_device(Handle& h) : m_handle(std::addressof(h)) {}
+        constexpr llfio_device() = default;
+        llfio_device(Handle& h) : m_handle(std::addressof(h)) {}
 
         Handle* handle() noexcept
         {
@@ -75,13 +75,13 @@ namespace detail {
             m_handle->close();
         }
 
-        expected<afio::span<afio_buffer_type>, failure> afio_read(
-            afio_request_type reqs)
+        expected<llfio::span<llfio_buffer_type>, failure> llfio_read(
+            llfio_request_type reqs)
         {
             Expects(m_handle);
             Expects(!reqs.buffers.empty());
 
-            auto ret = afio::read(*handle(), reqs);
+            auto ret = llfio::read(*handle(), reqs);
             if (ret.has_error()) {
                 return make_unexpected(make_error_code(ret.error()));
             }
@@ -93,35 +93,35 @@ namespace detail {
         {
             Expects(!bufs.empty());
 
-            afio_buffer_type dummy;
-            afio::span<afio_buffer_type> list(&dummy, bufs.size());
+            llfio_buffer_type dummy;
+            llfio::span<llfio_buffer_type> list(&dummy, bufs.size());
             std::transform(
                 bufs.begin(), bufs.end(), list.begin(),
-                [](buffer_type& b) -> afio_buffer_type {
-                    return {reinterpret_cast<afio::byte*>(b.data()), b.size()};
+                [](buffer_type& b) -> llfio_buffer_type {
+                    return {reinterpret_cast<llfio::byte*>(b.data()), b.size()};
                 });
 
-            auto ret = afio_read(
+            auto ret = llfio_read(
                 {list, static_cast<typename Handle::extent_type>(pos)});
             if (!ret) {
                 return make_unexpected(ret.error());
             }
 
             std::transform(ret->begin(), ret->end(), bufs.begin(),
-                           [](afio_buffer_type& b) -> buffer_type {
+                           [](llfio_buffer_type& b) -> buffer_type {
                                return {reinterpret_cast<byte*>(b.data), b.len};
                            });
             return bufs;
         }
 
-        expected<afio::span<const_afio_buffer_type>, failure>
-        afio_write(typename Handle::template io_request<
-                   afio::span<const_afio_buffer_type>> reqs)
+        expected<llfio::span<const_llfio_buffer_type>, failure>
+        llfio_write(typename Handle::template io_request<
+                   llfio::span<const_llfio_buffer_type>> reqs)
         {
             Expects(m_handle);
             Expects(!reqs.buffers.empty());
 
-            auto ret = afio::write(*handle(), reqs);
+            auto ret = llfio::write(*handle(), reqs);
             if (ret.has_error()) {
                 return make_unexpected(make_error_code(ret.error()));
             }
@@ -133,16 +133,16 @@ namespace detail {
         {
             Expects(!bufs.empty());
 
-            const_afio_buffer_type dummy;
-            afio::span<const_afio_buffer_type> list(&dummy, bufs.size());
+            const_llfio_buffer_type dummy;
+            llfio::span<const_llfio_buffer_type> list(&dummy, bufs.size());
             std::transform(
                 bufs.begin(), bufs.end(), list.begin(),
-                [](const_buffer_type& b) -> const_afio_buffer_type {
-                    return {reinterpret_cast<const afio::byte*>(b.data()),
+                [](const_buffer_type& b) -> const_llfio_buffer_type {
+                    return {reinterpret_cast<const llfio::byte*>(b.data()),
                             b.size()};
                 });
 
-            auto ret = afio_write(
+            auto ret = llfio_write(
                 {list, static_cast<typename Handle::extent_type>(pos)});
             if (!ret) {
                 return make_unexpected(ret.error());
@@ -150,7 +150,7 @@ namespace detail {
 
             std::transform(
                 ret->begin(), ret->end(), bufs.begin(),
-                [](const_afio_buffer_type& b) -> const_buffer_type {
+                [](const_llfio_buffer_type& b) -> const_buffer_type {
                     return {reinterpret_cast<const byte*>(b.data), b.len};
                 });
             return bufs;
@@ -161,15 +161,15 @@ namespace detail {
     };
 }  // namespace detail
 
-class afio_io_device : public detail::afio_device<afio::io_handle> {
-    using base = detail::afio_device<afio::io_handle>;
+class llfio_io_device : public detail::llfio_device<llfio::io_handle> {
+    using base = detail::llfio_device<llfio::io_handle>;
 
 public:
     using base::base;
 };
 
-class afio_file_device : public detail::afio_device<afio::file_handle> {
-    using base = detail::afio_device<afio::file_handle>;
+class llfio_file_device : public detail::llfio_device<llfio::file_handle> {
+    using base = detail::llfio_device<llfio::file_handle>;
 
 public:
     using base::base;
@@ -179,7 +179,7 @@ public:
         Expects(is_open());
 
         auto ret = handle()->truncate(
-            static_cast<afio::file_handle::extent_type>(newsize));
+            static_cast<llfio::file_handle::extent_type>(newsize));
         if (ret.has_error()) {
             return make_unexpected(make_error_code(ret.error()));
         }
@@ -199,4 +199,4 @@ public:
 SPIO_END_NAMESPACE
 }  // namespace spio
 
-#endif  // SPIO_AFIO_DEVICE_H
+#endif  // SPIO_LLFIO_DEVICE_H
