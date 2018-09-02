@@ -1,6 +1,6 @@
-[submodule "include/spio/third_party/afio"]
+[submodule "include/spio/third_party/llfio"]
 	path = include/spio/third_party/llfio
-	url = https://github.com/ned14/afio
+	url = https://github.com/ned14/llfio
 [submodule "include/spio/third_party/gsl-lite"]
 	path = include/spio/third_party/gsl-lite
 	url = https://github.com/martinmoene/gsl-lite
