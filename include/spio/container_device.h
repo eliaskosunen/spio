@@ -34,7 +34,7 @@ namespace detail {
     template <template <typename...> class Container>
     class basic_container_device_impl {
     public:
-        using container_type = Container<gsl::byte>;
+        using container_type = Container<byte>;
         using iterator = typename container_type::iterator;
         using const_iterator = typename container_type::const_iterator;
 
@@ -57,14 +57,14 @@ namespace detail {
         {
             return m_buf != nullptr;
         }
-        nonstd::expected<void, failure> close() noexcept
+        expected<void, failure> close() noexcept
         {
             Expects(m_buf != nullptr);
             m_buf = nullptr;
             return {};
         }
 
-        result read(gsl::span<gsl::byte> s, bool& eof) noexcept
+        result read(span<byte> s, bool& eof) noexcept
         {
             Expects(is_open());
 
@@ -80,7 +80,7 @@ namespace detail {
             }
             return n;
         }
-        result read_at(gsl::span<gsl::byte> s, streampos pos) noexcept
+        result read_at(span<byte> s, streampos pos) noexcept
         {
             Expects(is_open());
 
@@ -96,7 +96,7 @@ namespace detail {
             return n;
         }
 
-        result write(gsl::span<const gsl::byte> s)
+        result write(span<const byte> s)
         {
             Expects(is_open());
 
@@ -113,7 +113,7 @@ namespace detail {
             }
             return s.size();
         }
-        result write_at(gsl::span<const gsl::byte> s, streampos pos)
+        result write_at(span<const byte> s, streampos pos)
         {
             Expects(is_open());
 
@@ -130,22 +130,22 @@ namespace detail {
             return size;
         }
 
-        nonstd::expected<streampos, failure> seek(streampos pos,
-                                                  inout which = in | out) noexcept
+        expected<streampos, failure> seek(streampos pos,
+                                          inout which = in | out) noexcept
         {
             SPIO_UNUSED(which);
             return seek(pos, seekdir::beg);
         }
-        nonstd::expected<streampos, failure> seek(streamoff off,
-                                                  seekdir dir,
-                                                  inout which = in | out) noexcept
+        expected<streampos, failure> seek(streamoff off,
+                                          seekdir dir,
+                                          inout which = in | out) noexcept
         {
             SPIO_UNUSED(which);
             Expects(is_open());
 
             if (dir == seekdir::beg) {
                 if (m_buf->size() < off || off < 0) {
-                    return nonstd::make_unexpected(
+                    return make_unexpected(
                         failure{make_error_code(std::errc::invalid_argument),
                                 "offset out of range"});
                 }
@@ -159,7 +159,7 @@ namespace detail {
                 if (off < 0) {
                     auto dist = std::distance(m_buf->begin(), m_it);
                     if (dist < -off) {
-                        return nonstd::make_unexpected(failure{
+                        return make_unexpected(failure{
                             make_error_code(std::errc::invalid_argument),
                             "offset out of range"});
                     }
@@ -168,7 +168,7 @@ namespace detail {
                 }
                 auto dist = std::distance(m_it, m_buf->end());
                 if (dist < off) {
-                    return nonstd::make_unexpected(
+                    return make_unexpected(
                         failure{make_error_code(std::errc::invalid_argument),
                                 "offset out of range"});
                 }
@@ -177,7 +177,7 @@ namespace detail {
             }
 
             if (m_buf->size() < -off || off > 0) {
-                return nonstd::make_unexpected(
+                return make_unexpected(
                     failure{make_error_code(std::errc::invalid_argument),
                             "offset out of range"});
             }
@@ -185,12 +185,12 @@ namespace detail {
             return std::distance(m_buf->begin(), m_it);
         }
 
-        nonstd::expected<streamsize, failure> extent() const noexcept
+        expected<streamsize, failure> extent() const noexcept
         {
             Expects(is_open());
             return static_cast<streamsize>(m_buf->size());
         }
-        nonstd::expected<streamsize, failure> truncate(streamsize newsize)
+        expected<streamsize, failure> truncate(streamsize newsize)
         {
             Expects(is_open());
             m_buf->resize(newsize);

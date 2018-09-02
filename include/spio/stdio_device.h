@@ -40,7 +40,7 @@ public:
     {
         return m_handle != nullptr;
     }
-    nonstd::expected<void, failure> close() noexcept
+    expected<void, failure> close() noexcept
     {
         Expects(is_open());
         m_handle = nullptr;
@@ -56,7 +56,7 @@ public:
         return m_handle;
     }
 
-    result get(gsl::byte& r, bool& eof)
+    result get(byte& r, bool& eof)
     {
         Expects(is_open());
 
@@ -76,14 +76,14 @@ public:
         return static_cast<std::ptrdiff_t>(n);
     }
 
-    bool putback(gsl::byte b)
+    bool putback(byte b)
     {
         Expects(is_open());
 
-        return std::ungetc(gsl::to_uchar(b), m_handle) != EOF;
+        return std::ungetc(to_uchar(b), m_handle) != EOF;
     }
 
-    result write(gsl::span<const gsl::byte> s)
+    result write(span<const byte> s)
     {
         Expects(is_open());
 
@@ -97,25 +97,24 @@ public:
         return b;
     }
 
-    nonstd::expected<void, failure> sync()
+    expected<void, failure> sync()
     {
         Expects(is_open());
 
         if (std::fflush(m_handle) != 0) {
-            return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+            return make_unexpected(SPIO_MAKE_ERRNO);
         }
         return {};
     }
 
-    nonstd::expected<streampos, failure> seek(streampos pos,
-                                              inout which = in | out)
+    expected<streampos, failure> seek(streampos pos, inout which = in | out)
     {
         SPIO_UNUSED(which);
         return seek(streamoff(pos), seekdir::beg);
     }
-    nonstd::expected<streampos, failure> seek(streamoff off,
-                                              seekdir dir,
-                                              inout which = in | out)
+    expected<streampos, failure> seek(streamoff off,
+                                      seekdir dir,
+                                      inout which = in | out)
     {
         SPIO_UNUSED(which);
         Expects(is_open());
@@ -130,12 +129,12 @@ public:
             return SEEK_END;
         }();
         if (std::fseek(m_handle, static_cast<long>(off), origin) != 0) {
-            return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+            return make_unexpected(SPIO_MAKE_ERRNO);
         }
 
         auto p = std::ftell(m_handle);
         if (p == -1) {
-            return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+            return make_unexpected(SPIO_MAKE_ERRNO);
         }
         return p;
     }

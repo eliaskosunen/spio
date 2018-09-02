@@ -45,10 +45,26 @@
 
 #if SPIO_MSVC
 #pragma warning(push)
-#pragma warning(disable: 4127)
+#pragma warning(disable : 4127)
 #endif
 
 #include "fmt/format.h"
+
+namespace spio {
+SPIO_BEGIN_NAMESPACE
+namespace fmt {
+    using ::fmt::basic_format_args;
+    using ::fmt::basic_format_context;
+    using ::fmt::basic_string_view;
+    using ::fmt::format;
+    using ::fmt::format_context_t;
+    using ::fmt::format_to;
+    using ::fmt::make_format_args;
+    using ::fmt::vformat;
+    using ::fmt::vformat_to;
+}  // namespace fmt
+SPIO_END_NAMESPACE
+}  // namespace spio
 
 #if SPIO_MSVC
 #pragma warning(pop)

@@ -32,14 +32,14 @@ class basic_result {
 public:
     using success_type = T;
     using error_type = E;
-    using wrapped_error_type = nonstd::optional<E>;
+    using wrapped_error_type = optional<E>;
 
     SPIO_CONSTEXPR basic_result() = default;
     SPIO_CONSTEXPR basic_result(success_type ok) noexcept : m_ok(std::move(ok))
     {
     }
 #if !SPIO_HAS_DEDUCTION_GUIDES
-    // ambiguous if nonstd::optional has deduction guides
+    // ambiguous if optional has deduction guides
     basic_result(success_type ok, error_type err)
         : m_ok(std::move(ok)), m_err(std::move(err))
     {
@@ -109,7 +109,7 @@ public:
 
 private:
     success_type m_ok{};
-    wrapped_error_type m_err{nonstd::nullopt};
+    wrapped_error_type m_err{nullopt};
 };
 
 using result = basic_result<streamsize, failure>;

@@ -38,15 +38,15 @@ struct basic_scanner_impl;
 
 template <typename CharT>
 struct basic_scan_locale {
-    gsl::span<const CharT> space;
-    gsl::span<const CharT> thousand_sep;
-    gsl::span<const CharT> decimal_sep;
+    span<const CharT> space;
+    span<const CharT> thousand_sep;
+    span<const CharT> decimal_sep;
 };
 
 template <typename CharT, size_t N>
-gsl::span<CharT> strspan(CharT (&str)[N])
+span<CharT> strspan(CharT (&str)[N])
 {
-    return gsl::make_span(str, N);
+    return make_span(str, N);
 }
 
 template <typename CharT>
@@ -86,7 +86,7 @@ inline basic_scan_locale<char32_t> classic_scan_locale()
 namespace detail {
     template <typename Context>
     struct custom_value {
-        using fn_type = nonstd::expected<void, failure>(void*, Context&);
+        using fn_type = expected<void, failure>(void*, Context&);
 
         void* value;
         fn_type* scan;
@@ -104,15 +104,14 @@ public:
     {
     }
 
-    nonstd::expected<void, failure> visit(Context& ctx)
+    expected<void, failure> visit(Context& ctx)
     {
         return m_value.scan(m_value.value, ctx);
     }
 
 private:
     template <typename T>
-    static nonstd::expected<void, failure> scan_custom_arg(void* arg,
-                                                           Context& ctx)
+    static expected<void, failure> scan_custom_arg(void* arg, Context& ctx)
     {
         typename Context::template scanner_impl_type<T> s;
         auto& parse_ctx = ctx.parse_context();
@@ -138,9 +137,9 @@ class scan_arg_store {
 public:
     scan_arg_store(Args&... a) : m_data{basic_scan_arg<Context>(a)...} {}
 
-    gsl::span<basic_scan_arg<Context>> data()
+    span<basic_scan_arg<Context>> data()
     {
-        return gsl::make_span(m_data.data(), m_data.size());
+        return make_span(m_data.data(), m_data.size());
     }
 
 private:
@@ -166,9 +165,9 @@ public:
     {
     }
 
-    basic_scan_args(gsl::span<basic_scan_arg<Context>> args) : m_args(args) {}
+    basic_scan_args(span<basic_scan_arg<Context>> args) : m_args(args) {}
 
-    nonstd::expected<void, failure> visit(Context& ctx)
+    expected<void, failure> visit(Context& ctx)
     {
         for (auto& a : m_args) {
             auto ret = a.visit(ctx);
@@ -182,7 +181,7 @@ public:
     }
 
 private:
-    gsl::span<basic_scan_arg<Context>> m_args;
+    span<basic_scan_arg<Context>> m_args;
 };
 
 template <typename Char>
@@ -231,12 +230,12 @@ public:
 
     basic_scan_stream_ref(ref_type ref) : m_ref(ref) {}
 
-    nonstd::expected<char_type, failure> read_char()
+    expected<char_type, failure> read_char()
     {
         char_type ch{};
         auto ret = getchar(m_ref, ch);
         if (ret.has_error()) {
-            return nonstd::make_unexpected(ret.error());
+            return make_unexpected(ret.error());
         }
         m_buf.push_back(ch);
         return ch;
@@ -244,13 +243,12 @@ public:
     bool putback(char_type ch)
     {
         m_buf.pop_back();
-        return putback(gsl::as_bytes(gsl::make_span(&ch, 1)));
+        return putback(as_bytes(make_span(&ch, 1)));
     }
 
     bool putback_all()
     {
-        auto ret =
-            putback(gsl::as_bytes(gsl::make_span(m_buf.data(), m_buf.size())));
+        auto ret = putback(as_bytes(make_span(m_buf.data(), m_buf.size())));
         if (ret) {
             m_buf.clear();
         }
@@ -269,19 +267,19 @@ public:
 
     basic_scan_stream_ref(ref_type ref) : m_ref(ref) {}
 
-    nonstd::expected<char_type, failure> read_char()
+    expected<char_type, failure> read_char()
     {
         char_type ch{};
         auto ret = getchar(m_ref, ch);
         if (ret.has_error()) {
-            return nonstd::make_unexpected(ret.error());
+            return make_unexpected(ret.error());
         }
         m_buf.push_back(ch);
         return ch;
     }
     bool putback(char_type ch)
     {
-        for (auto b : gsl::as_bytes(gsl::make_span(&ch, 1))) {
+        for (auto b : as_bytes(make_span(&ch, 1))) {
             if (!putback(b)) {
                 return false;
             }
@@ -293,7 +291,7 @@ public:
     bool putback_all()
     {
         // FIXME
-        for (auto b : gsl::as_bytes(gsl::make_span(m_buf.data(), 1))) {
+        for (auto b : as_bytes(make_span(m_buf.data(), 1))) {
             if (!putback(b)) {
                 return false;
             }
@@ -316,13 +314,13 @@ public:
     {
     }
 
-    nonstd::expected<char_type, failure> read_char()
+    expected<char_type, failure> read_char()
     {
         char_type ch{};
         auto ret = getchar_at(m_ref, ch, m_pos);
         m_pos += ret.value();
         if (ret.has_error()) {
-            return nonstd::make_unexpected(ret.error());
+            return make_unexpected(ret.error());
         }
         return ch;
     }
@@ -384,10 +382,10 @@ namespace detail {
     template <typename CharT>
     struct scanner_parser_empty {
         template <typename ParseContext>
-        nonstd::expected<void, failure> parse(ParseContext& ctx)
+        expected<void, failure> parse(ParseContext& ctx)
         {
             if (*ctx.begin() != CharT('{')) {
-                return nonstd::make_unexpected(failure{
+                return make_unexpected(failure{
                     scanner_error,
                     fmt::format("Unexpected '{}' in scanner format string",
                                 ctx.begin())});
@@ -402,11 +400,11 @@ template <typename CharT>
 struct basic_scanner_impl<CharT, CharT>
     : public detail::scanner_parser_empty<CharT> {
     template <typename Context>
-    nonstd::expected<void, failure> scan(CharT& val, Context& ctx)
+    expected<void, failure> scan(CharT& val, Context& ctx)
     {
         auto ch = ctx.stream().read_char();
         if (!ch) {
-            return nonstd::make_unexpected(ch.error());
+            return make_unexpected(ch.error());
         }
         val = ch.value();
         return {};
@@ -416,8 +414,8 @@ struct basic_scanner_impl<CharT, CharT>
 template <typename CharT>
 struct basic_scanner {
     template <typename Context>
-    nonstd::expected<void, failure> operator()(Context& ctx,
-                                               basic_scan_args<Context> args)
+    expected<void, failure> operator()(Context& ctx,
+                                       basic_scan_args<Context> args)
     {
         return args.visit(ctx);
     }
@@ -426,9 +424,9 @@ struct basic_scanner {
 template <typename Stream, typename... Args>
 auto scan(Stream& s,
           basic_string_view<typename Stream::char_type> f,
-          Args&... a) -> decltype(read(std::declval<Stream&>(),
-                                       std::declval<gsl::span<gsl::byte>>()),
-                                  nonstd::expected<void, failure>())
+          Args&... a)
+    -> decltype(read(std::declval<Stream&>(), std::declval<span<byte>>()),
+                expected<void, failure>())
 {
     using encoding_type = typename Stream::encoding_type;
     using ref_type = basic_scan_stream_ref<encoding_type, readable_tag>;
@@ -445,8 +443,8 @@ template <typename Stream, typename... Args>
 auto scan(Stream& s,
           basic_string_view<typename Stream::char_type> f,
           Args&... a)
-    -> decltype(get(std::declval<Stream&>(), std::declval<gsl::byte>()),
-                nonstd::expected<void, failure>())
+    -> decltype(get(std::declval<Stream&>(), std::declval<byte>()),
+                expected<void, failure>())
 {
     using encoding_type = typename Stream::encoding_type;
     using ref_type = basic_scan_stream_ref<encoding_type, byte_readable_tag>;
@@ -463,7 +461,7 @@ template <typename Stream, typename... Args>
 auto scan_at(Stream& s,
              streampos pos,
              basic_string_view<typename Stream::char_type> f,
-             Args&... a) -> nonstd::expected<void, failure>
+             Args&... a) -> expected<void, failure>
 {
     using encoding_type = typename Stream::encoding_type;
     using ref_type =
@@ -483,7 +481,7 @@ template <typename Char,
           typename... Args>
 auto scan(basic_stream_ref<Char, Tag> s,
           basic_string_view<typename Char::type> f,
-          Args&... a) -> nonstd::expected<void, failure>
+          Args&... a) -> expected<void, failure>
 {
     using ref_type = basic_scan_stream_ref<Char, readable_tag>;
     using context_type = basic_scan_context<ref_type, Char>;
@@ -500,7 +498,7 @@ template <typename Char,
 auto scan_at(basic_stream_ref<Char, Tag> s,
              streampos pos,
              basic_string_view<typename Char::type> f,
-             Args&... a) -> nonstd::expected<void, failure>
+             Args&... a) -> expected<void, failure>
 {
     using ref_type = basic_scan_stream_ref<Char, random_access_readable_tag>;
     using context_type = basic_scan_context<ref_type, Char>;

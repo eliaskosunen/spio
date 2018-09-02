@@ -45,36 +45,34 @@ namespace detail {
         virtual void clear_eof() = 0;
 
         virtual bool is_open() const = 0;
-        virtual nonstd::expected<void, failure> close() = 0;
+        virtual expected<void, failure> close() = 0;
 
-        virtual result write(std::vector<gsl::byte> buf) = 0;
-        virtual result write(gsl::span<const gsl::byte> buf) = 0;
-        virtual result write_at(std::vector<gsl::byte> buf, streampos pos) = 0;
-        virtual result write_at(gsl::span<const gsl::byte> buf,
-                                streampos pos) = 0;
-        virtual result put(gsl::byte data) = 0;
+        virtual result write(std::vector<byte> buf) = 0;
+        virtual result write(span<const byte> buf) = 0;
+        virtual result write_at(std::vector<byte> buf, streampos pos) = 0;
+        virtual result write_at(span<const byte> buf, streampos pos) = 0;
+        virtual result put(byte data) = 0;
 
         virtual result flush() = 0;
-        virtual nonstd::expected<void, failure> sync() = 0;
+        virtual expected<void, failure> sync() = 0;
 
         virtual basic_formatter<Encoding> formatter() = 0;
 
-        virtual result read(gsl::span<gsl::byte> buf) = 0;
-        virtual result read_at(gsl::span<gsl::byte> buf, streampos pos) = 0;
-        virtual result get(gsl::byte& data) = 0;
+        virtual result read(span<byte> buf) = 0;
+        virtual result read_at(span<byte> buf, streampos pos) = 0;
+        virtual result get(byte& data) = 0;
 
         virtual basic_scanner<Encoding> scanner() = 0;
 
-        virtual bool putback(gsl::span<const gsl::byte> data) = 0;
-        virtual bool putback(gsl::byte data) = 0;
+        virtual bool putback(span<const byte> data) = 0;
+        virtual bool putback(byte data) = 0;
 
-        virtual nonstd::expected<streampos, failure> seek(
-            streampos pos,
-            inout which = in | out) = 0;
-        virtual nonstd::expected<streampos, failure>
-        seek(streamoff off, seekdir dir, inout which = in | out) = 0;
-        virtual nonstd::expected<streampos, failure> tell(
-            inout which = in | out) = 0;
+        virtual expected<streampos, failure> seek(streampos pos,
+                                                  inout which = in | out) = 0;
+        virtual expected<streampos, failure> seek(streamoff off,
+                                                  seekdir dir,
+                                                  inout which = in | out) = 0;
+        virtual expected<streampos, failure> tell(inout which = in | out) = 0;
 
         virtual ~erased_stream_storage_base() = default;
     };
@@ -129,28 +127,28 @@ namespace detail {
         {
             return m_stream.is_open();
         }
-        nonstd::expected<void, failure> close() override
+        expected<void, failure> close() override
         {
             return m_stream.close();
         }
 
-        result write(std::vector<gsl::byte> buf) override
+        result write(std::vector<byte> buf) override
         {
             return _write(buf);
         }
-        result write(gsl::span<const gsl::byte> buf) override
+        result write(span<const byte> buf) override
         {
             return _write(buf);
         }
-        result write_at(std::vector<gsl::byte> buf, streampos pos) override
+        result write_at(std::vector<byte> buf, streampos pos) override
         {
             return _write_at(buf, pos);
         }
-        result write_at(gsl::span<const gsl::byte> buf, streampos pos) override
+        result write_at(span<const byte> buf, streampos pos) override
         {
             return _write_at(buf, pos);
         }
-        result put(gsl::byte data) override
+        result put(byte data) override
         {
             return _put(data);
         }
@@ -159,7 +157,7 @@ namespace detail {
         {
             return _flush();
         }
-        nonstd::expected<void, failure> sync() override
+        expected<void, failure> sync() override
         {
             return _sync();
         }
@@ -169,15 +167,15 @@ namespace detail {
             return _formatter();
         }
 
-        result read(gsl::span<gsl::byte> buf) override
+        result read(span<byte> buf) override
         {
             return _read(buf);
         }
-        result read_at(gsl::span<gsl::byte> buf, streampos pos) override
+        result read_at(span<byte> buf, streampos pos) override
         {
             return _read_at(buf, pos);
         }
-        result get(gsl::byte& data) override
+        result get(byte& data) override
         {
             return _get(data);
         }
@@ -187,83 +185,80 @@ namespace detail {
             return _scanner();
         }
 
-        bool putback(gsl::span<const gsl::byte> buf) override
+        bool putback(span<const byte> buf) override
         {
             return _putback(buf);
         }
-        bool putback(gsl::byte d) override
+        bool putback(byte d) override
         {
             return _putback(d);
         }
 
-        nonstd::expected<streampos, failure> seek(streampos pos,
-                                                  inout which = in |
-                                                                out) override
+        expected<streampos, failure> seek(streampos pos,
+                                          inout which = in | out) override
         {
             return _seek(pos, which);
         }
-        nonstd::expected<streampos, failure> seek(streamoff off,
-                                                  seekdir dir,
-                                                  inout which = in |
-                                                                out) override
+        expected<streampos, failure> seek(streamoff off,
+                                          seekdir dir,
+                                          inout which = in | out) override
         {
             return _seek(off, dir, which);
         }
-        nonstd::expected<streampos, failure> tell(inout which = in |
-                                                                out) override
+        expected<streampos, failure> tell(inout which = in | out) override
         {
             return _tell(which);
         }
 
     private:
         template <typename S = Stream>
-        auto _write(std::vector<gsl::byte> buf) ->
+        auto _write(std::vector<byte> buf) ->
             typename std::enable_if<is_writable_stream<S>::value, result>::type
         {
             return ::spio::write(m_stream, buf);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _write(std::vector<gsl::byte>) ->
+        [[noreturn]] auto _write(std::vector<byte>) ->
             typename std::enable_if<!is_writable_stream<S>::value, result>::type
         {
             SPIO_UNREACHABLE;
         }
         template <typename S = Stream>
-        auto _write(gsl::span<const gsl::byte> buf) ->
+        auto _write(span<const byte> buf) ->
             typename std::enable_if<is_writable_stream<S>::value, result>::type
         {
             return ::spio::write(m_stream, buf);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _write(gsl::span<const gsl::byte>) ->
+        [[noreturn]] auto _write(span<const byte>) ->
             typename std::enable_if<!is_writable_stream<S>::value, result>::type
         {
             SPIO_UNREACHABLE;
         }
 
         template <typename S = Stream>
-        auto _write_at(std::vector<gsl::byte> buf, streampos pos) ->
+        auto _write_at(std::vector<byte> buf, streampos pos) ->
             typename std::enable_if<is_random_access_writable_stream<S>::value,
                                     result>::type
         {
             return ::spio::write_at(m_stream, buf, pos);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _write_at(std::vector<gsl::byte>, streampos) ->
+        [[noreturn]] auto _write_at(std::vector<byte>, streampos) ->
             typename std::enable_if<!is_random_access_writable_stream<S>::value,
                                     result>::type
         {
             SPIO_UNREACHABLE;
         }
         template <typename S = Stream>
-        auto _write_at(gsl::span<const gsl::byte> buf, streampos pos) ->
+        auto _write_at(span<const byte> buf, streampos pos) ->
             typename std::enable_if<is_random_access_writable_stream<S>::value,
                                     result>::type
         {
             return ::spio::write_at(m_stream, buf, pos);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _write_at(gsl::span<const gsl::byte>, streampos) ->
+        [[noreturn]] auto _write_at(span<const byte>, streampos) ->
             typename std::enable_if<!is_random_access_writable_stream<S>::value,
                                     result>::type
         {
@@ -271,14 +266,14 @@ namespace detail {
         }
 
         template <typename S = Stream>
-        auto _put(gsl::byte data) ->
+        auto _put(byte data) ->
             typename std::enable_if<is_byte_writable_stream<S>::value,
                                     result>::type
         {
             return ::spio::put(m_stream, data);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _put(gsl::byte) ->
+        [[noreturn]] auto _put(byte) ->
             typename std::enable_if<!is_byte_writable_stream<S>::value,
                                     result>::type
         {
@@ -300,16 +295,15 @@ namespace detail {
         }
 
         template <typename S = Stream>
-        auto _sync() ->
-            typename std::enable_if<is_syncable_stream<S>::value,
-                                    nonstd::expected<void, failure>>::type
+        auto _sync() -> typename std::enable_if<is_syncable_stream<S>::value,
+                                                expected<void, failure>>::type
         {
             return ::spio::sync(m_stream);
         }
         template <typename S = Stream>
         [[noreturn]] auto _sync() ->
             typename std::enable_if<!is_syncable_stream<S>::value,
-                                    nonstd::expected<void, failure>>::type
+                                    expected<void, failure>>::type
         {
             SPIO_UNREACHABLE;
         }
@@ -330,27 +324,27 @@ namespace detail {
         }
 
         template <typename S = Stream>
-        auto _read(gsl::span<gsl::byte> buf) ->
+        auto _read(span<byte> buf) ->
             typename std::enable_if<is_readable_stream<S>::value, result>::type
         {
             return ::spio::read(m_stream, buf);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _read(gsl::span<gsl::byte>) ->
+        [[noreturn]] auto _read(span<byte>) ->
             typename std::enable_if<!is_readable_stream<S>::value, result>::type
         {
             SPIO_UNREACHABLE;
         }
 
         template <typename S = Stream>
-        auto _read_at(gsl::span<gsl::byte> buf, streampos pos) ->
+        auto _read_at(span<byte> buf, streampos pos) ->
             typename std::enable_if<is_random_access_readable_stream<S>::value,
                                     result>::type
         {
             return ::spio::read_at(m_stream, buf, pos);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _read_at(gsl::span<gsl::byte>, streampos) ->
+        [[noreturn]] auto _read_at(span<byte>, streampos) ->
             typename std::enable_if<!is_random_access_readable_stream<S>::value,
                                     result>::type
         {
@@ -358,14 +352,14 @@ namespace detail {
         }
 
         template <typename S = Stream>
-        auto _get(gsl::byte& d) ->
+        auto _get(byte& d) ->
             typename std::enable_if<is_byte_readable_stream<S>::value,
                                     result>::type
         {
             return ::spio::get(m_stream, d);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _get(gsl::byte&) ->
+        [[noreturn]] auto _get(byte&) ->
             typename std::enable_if<!is_byte_readable_stream<S>::value,
                                     result>::type
         {
@@ -382,14 +376,14 @@ namespace detail {
             basic_scanner<typename S::encoding_type>>::type;
 
         template <typename S = Stream>
-        auto _putback(gsl::span<const gsl::byte> buf) ->
+        auto _putback(span<const byte> buf) ->
             typename std::enable_if<is_putbackable_span_stream<S>::value,
                                     bool>::type
         {
             return ::spio::putback(m_stream, buf);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _putback(gsl::span<const gsl::byte>) ->
+        [[noreturn]] auto _putback(span<const byte>) ->
             typename std::enable_if<!is_putbackable_span_stream<S>::value,
                                     bool>::type
         {
@@ -397,14 +391,14 @@ namespace detail {
         }
 
         template <typename S = Stream>
-        auto _putback(gsl::byte d) ->
+        auto _putback(byte d) ->
             typename std::enable_if<is_putbackable_byte_stream<S>::value,
                                     bool>::type
         {
             return ::spio::putback(m_stream, d);
         }
         template <typename S = Stream>
-        [[noreturn]] auto _putback(gsl::byte) ->
+        [[noreturn]] auto _putback(byte) ->
             typename std::enable_if<!is_putbackable_byte_stream<S>::value,
                                     bool>::type
         {
@@ -414,14 +408,14 @@ namespace detail {
         template <typename S = Stream>
         auto _seek(streampos pos, inout which = in | out) ->
             typename std::enable_if<is_absolute_seekable_stream<S>::value,
-                                    nonstd::expected<streampos, failure>>::type
+                                    expected<streampos, failure>>::type
         {
             return ::spio::seek(m_stream, pos, which);
         }
         template <typename S = Stream>
         auto _seek(streampos, inout = in | out) ->
             typename std::enable_if<!is_absolute_seekable_stream<S>::value,
-                                    nonstd::expected<streampos, failure>>::type
+                                    expected<streampos, failure>>::type
         {
             SPIO_UNREACHABLE;
         }
@@ -429,14 +423,14 @@ namespace detail {
         template <typename S = Stream>
         auto _seek(streamoff off, seekdir dir, inout which = in | out) ->
             typename std::enable_if<is_relative_seekable_stream<S>::value,
-                                    nonstd::expected<streampos, failure>>::type
+                                    expected<streampos, failure>>::type
         {
             return ::spio::seek(m_stream, off, dir, which);
         }
         template <typename S = Stream>
         auto _seek(streamoff, seekdir, inout = in | out) ->
             typename std::enable_if<!is_relative_seekable_stream<S>::value,
-                                    nonstd::expected<streampos, failure>>::type
+                                    expected<streampos, failure>>::type
         {
             SPIO_UNREACHABLE;
         }
@@ -444,14 +438,14 @@ namespace detail {
         template <typename S = Stream>
         auto _tell(inout which = in | out) ->
             typename std::enable_if<is_tellable_stream<S>::value,
-                                    nonstd::expected<streampos, failure>>::type
+                                    expected<streampos, failure>>::type
         {
             return ::spio::tell(m_stream, which);
         }
         template <typename S = Stream>
         auto _tell(inout = in | out) ->
             typename std::enable_if<!is_tellable_stream<S>::value,
-                                    nonstd::expected<streampos, failure>>::type
+                                    expected<streampos, failure>>::type
         {
             SPIO_UNREACHABLE;
         }
@@ -687,15 +681,14 @@ result stream<Device, Encoding, Chain>::input_sentry::_handle_tied(
 }
 
 template <typename Encoding, typename Properties>
-auto write(basic_stream_ref<Encoding, Properties> s, std::vector<gsl::byte> buf)
-    -> typename std::enable_if<detail::has_tag<Properties, writable_tag>::value,
-                               result>::type
+auto write(basic_stream_ref<Encoding, Properties> s, std::vector<byte> buf) ->
+    typename std::enable_if<detail::has_tag<Properties, writable_tag>::value,
+                            result>::type
 {
     return s->write(std::move(buf));
 }
 template <typename Encoding, typename Properties>
-auto write(basic_stream_ref<Encoding, Properties> s,
-           gsl::span<const gsl::byte> buf) ->
+auto write(basic_stream_ref<Encoding, Properties> s, span<const byte> buf) ->
     typename std::enable_if<detail::has_tag<Properties, writable_tag>::value,
                             result>::type
 {
@@ -704,7 +697,7 @@ auto write(basic_stream_ref<Encoding, Properties> s,
 
 template <typename Encoding, typename Properties>
 auto write_at(basic_stream_ref<Encoding, Properties> s,
-              std::vector<gsl::byte> buf,
+              std::vector<byte> buf,
               streampos pos) ->
     typename std::enable_if<
         detail::has_tag<Properties, random_access_writable_tag>::value,
@@ -714,7 +707,7 @@ auto write_at(basic_stream_ref<Encoding, Properties> s,
 }
 template <typename Encoding, typename Properties>
 auto write_at(basic_stream_ref<Encoding, Properties> s,
-              gsl::span<const gsl::byte> data,
+              span<const byte> data,
               streampos pos) ->
     typename std::enable_if<
         detail::has_tag<Properties, random_access_writable_tag>::value,
@@ -724,7 +717,7 @@ auto write_at(basic_stream_ref<Encoding, Properties> s,
 }
 
 template <typename Encoding, typename Properties>
-auto put(basic_stream_ref<Encoding, Properties> s, gsl::byte data) ->
+auto put(basic_stream_ref<Encoding, Properties> s, byte data) ->
     typename std::enable_if<
         detail::has_tag<Properties, byte_writable_tag>::value,
         result>::type
@@ -749,22 +742,22 @@ auto flush(basic_stream_ref<Encoding, Properties> s) ->
 template <typename Encoding, typename Properties>
 auto sync(basic_stream_ref<Encoding, Properties> s) ->
     typename std::enable_if<detail::has_tag<Properties, syncable_tag>::value,
-                            nonstd::expected<void, failure>>::type
+                            expected<void, failure>>::type
 {
     return s->sync();
 }
 
 template <typename Encoding, typename Properties>
-auto read(basic_stream_ref<Encoding, Properties> s, gsl::span<gsl::byte> data)
-    -> typename std::enable_if<detail::has_tag<Properties, readable_tag>::value,
-                               result>::type
+auto read(basic_stream_ref<Encoding, Properties> s, span<byte> data) ->
+    typename std::enable_if<detail::has_tag<Properties, readable_tag>::value,
+                            result>::type
 {
     return s->read(data);
 }
 
 template <typename Encoding, typename Properties>
 auto read_at(basic_stream_ref<Encoding, Properties> s,
-             gsl::span<gsl::byte> data,
+             span<byte> data,
              streampos pos) ->
     typename std::enable_if<
         detail::has_tag<Properties, random_access_readable_tag>::value,
@@ -774,7 +767,7 @@ auto read_at(basic_stream_ref<Encoding, Properties> s,
 }
 
 template <typename Encoding, typename Properties>
-auto get(basic_stream_ref<Encoding, Properties> s, gsl::byte& data) ->
+auto get(basic_stream_ref<Encoding, Properties> s, byte& data) ->
     typename std::enable_if<
         detail::has_tag<Properties, byte_readable_tag>::value,
         result>::type
@@ -789,8 +782,7 @@ basic_scanner<Encoding> get_scanner(basic_stream_ref<Encoding, Properties> s)
 }
 
 template <typename Encoding, typename Properties>
-auto putback(basic_stream_ref<Encoding, Properties> s,
-             gsl::span<const gsl::byte> d) ->
+auto putback(basic_stream_ref<Encoding, Properties> s, span<const byte> d) ->
     typename std::enable_if<
         detail::has_tag<Properties, putbackable_span_tag>::value,
         bool>::type
@@ -798,7 +790,7 @@ auto putback(basic_stream_ref<Encoding, Properties> s,
     return s->putback(d);
 }
 template <typename Encoding, typename Properties>
-auto putback(basic_stream_ref<Encoding, Properties> s, gsl::byte d) ->
+auto putback(basic_stream_ref<Encoding, Properties> s, byte d) ->
     typename std::enable_if<
         detail::has_tag<Properties, putbackable_byte_tag>::value,
         bool>::type
@@ -812,7 +804,7 @@ auto seek(basic_stream_ref<Encoding, Properties> s,
           inout which = in | out) ->
     typename std::enable_if<
         detail::has_tag<Properties, absolute_seekable_tag>::value,
-        nonstd::expected<streampos, failure>>::type
+        expected<streampos, failure>>::type
 {
     return s->seek(pos, which);
 }
@@ -823,14 +815,14 @@ auto seek(basic_stream_ref<Encoding, Properties> s,
           inout which = in | out) ->
     typename std::enable_if<
         detail::has_tag<Properties, relative_seekable_tag>::value,
-        nonstd::expected<streampos, failure>>::type
+        expected<streampos, failure>>::type
 {
     return s->seek(off, dir, which);
 }
 template <typename Encoding, typename Properties>
 auto tell(basic_stream_ref<Encoding, Properties> s, inout which = in | out) ->
     typename std::enable_if<detail::has_tag<Properties, tellable_tag>::value,
-                            nonstd::expected<streampos, failure>>::type
+                            expected<streampos, failure>>::type
 {
     return s->tell(which);
 }

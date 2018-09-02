@@ -22,7 +22,7 @@ TEST_CASE("scanner")
 {
     std::string data{"abc"};
     spio::memory_instream in(
-        gsl::as_bytes(gsl::make_span(data.data(), data.size())));
+        spio::as_bytes(spio::make_span(data.data(), data.size())));
     static_assert(spio::is_random_access_readable<spio::memory_source>::value,
                   "");
     static_assert(

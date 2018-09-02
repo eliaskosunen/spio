@@ -50,8 +50,8 @@ namespace detail {
         using const_afio_request_type = typename Handle::template io_request<
             afio::span<const_afio_buffer_type>>;
 
-        using buffer_type = gsl::span<gsl::byte>;
-        using const_buffer_type = gsl::span<const gsl::byte>;
+        using buffer_type = span<byte>;
+        using const_buffer_type = span<const byte>;
 
         constexpr afio_device() = default;
         afio_device(Handle& h) : m_handle(std::addressof(h)) {}
@@ -75,7 +75,7 @@ namespace detail {
             m_handle->close();
         }
 
-        nonstd::expected<afio::span<afio_buffer_type>, failure> afio_read(
+        expected<afio::span<afio_buffer_type>, failure> afio_read(
             afio_request_type reqs)
         {
             Expects(m_handle);
@@ -83,12 +83,12 @@ namespace detail {
 
             auto ret = afio::read(*handle(), reqs);
             if (ret.has_error()) {
-                return nonstd::make_unexpected(make_error_code(ret.error()));
+                return make_unexpected(make_error_code(ret.error()));
             }
             return ret.value();
         }
-        nonstd::expected<gsl::span<buffer_type>, failure> vread(
-            gsl::span<buffer_type> bufs,
+        expected<span<buffer_type>, failure> vread(
+            span<buffer_type> bufs,
             streampos pos = 0)
         {
             Expects(!bufs.empty());
@@ -104,18 +104,17 @@ namespace detail {
             auto ret = afio_read(
                 {list, static_cast<typename Handle::extent_type>(pos)});
             if (!ret) {
-                return nonstd::make_unexpected(ret.error());
+                return make_unexpected(ret.error());
             }
 
-            std::transform(
-                ret->begin(), ret->end(), bufs.begin(),
-                [](afio_buffer_type& b) -> buffer_type {
-                    return {reinterpret_cast<gsl::byte*>(b.data), b.len};
-                });
+            std::transform(ret->begin(), ret->end(), bufs.begin(),
+                           [](afio_buffer_type& b) -> buffer_type {
+                               return {reinterpret_cast<byte*>(b.data), b.len};
+                           });
             return bufs;
         }
 
-        nonstd::expected<afio::span<const_afio_buffer_type>, failure>
+        expected<afio::span<const_afio_buffer_type>, failure>
         afio_write(typename Handle::template io_request<
                    afio::span<const_afio_buffer_type>> reqs)
         {
@@ -124,12 +123,12 @@ namespace detail {
 
             auto ret = afio::write(*handle(), reqs);
             if (ret.has_error()) {
-                return nonstd::make_unexpected(make_error_code(ret.error()));
+                return make_unexpected(make_error_code(ret.error()));
             }
             return ret.value();
         }
-        nonstd::expected<gsl::span<const_buffer_type>, failure> vwrite(
-            gsl::span<const_buffer_type> bufs,
+        expected<span<const_buffer_type>, failure> vwrite(
+            span<const_buffer_type> bufs,
             streampos pos = 0)
         {
             Expects(!bufs.empty());
@@ -146,13 +145,13 @@ namespace detail {
             auto ret = afio_write(
                 {list, static_cast<typename Handle::extent_type>(pos)});
             if (!ret) {
-                return nonstd::make_unexpected(ret.error());
+                return make_unexpected(ret.error());
             }
 
             std::transform(
                 ret->begin(), ret->end(), bufs.begin(),
                 [](const_afio_buffer_type& b) -> const_buffer_type {
-                    return {reinterpret_cast<const gsl::byte*>(b.data), b.len};
+                    return {reinterpret_cast<const byte*>(b.data), b.len};
                 });
             return bufs;
         }
@@ -175,23 +174,23 @@ class afio_file_device : public detail::afio_device<afio::file_handle> {
 public:
     using base::base;
 
-    nonstd::expected<streamsize, failure> truncate(streamsize newsize)
+    expected<streamsize, failure> truncate(streamsize newsize)
     {
         Expects(is_open());
 
         auto ret = handle()->truncate(
             static_cast<afio::file_handle::extent_type>(newsize));
         if (ret.has_error()) {
-            return nonstd::make_unexpected(make_error_code(ret.error()));
+            return make_unexpected(make_error_code(ret.error()));
         }
         return static_cast<streamsize>(ret.value());
     }
 
-    nonstd::expected<streamsize, failure> extent() const
+    expected<streamsize, failure> extent() const
     {
         auto ret = handle()->maximum_extent();
         if (ret.has_error()) {
-            return nonstd::make_unexpected(make_error_code(ret.error()));
+            return make_unexpected(make_error_code(ret.error()));
         }
         return static_cast<streamsize>(ret.value());
     }

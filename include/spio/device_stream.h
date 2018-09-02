@@ -149,19 +149,19 @@ public:
 template <typename Char>
 class basic_stdio_outstream : public basic_stdio_handle_outstream<Char> {
     using base = basic_stdio_handle_outstream<Char>;
-    using deleter_return = nonstd::expected<void, failure>;
+    using deleter_return = expected<void, failure>;
     using deleter = auto_delete<std::FILE, deleter_return>;
 
 public:
     basic_stdio_outstream() : base(nullptr, buffer_mode::none) {}
 
-    nonstd::expected<std::FILE*, failure> open(const char* n,
-                                               const char* f,
-                                               buffer_mode b)
+    expected<std::FILE*, failure> open(const char* n,
+                                       const char* f,
+                                       buffer_mode b)
     {
         auto file = std::fopen(n, f);
         if (!file) {
-            return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+            return make_unexpected(SPIO_MAKE_ERRNO);
         }
         base::device() = stdio_sink(file);
         base::output_base::sink_storage() =
@@ -170,14 +170,14 @@ public:
                         [](std::FILE* h) -> deleter_return {
                             Expects(h);
                             if (std::fclose(h) != 0) {
-                                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                                return make_unexpected(SPIO_MAKE_ERRNO);
                             }
                             return {};
                         });
         return base::device().handle();
     }
 
-    nonstd::expected<void, failure> close() override
+    expected<void, failure> close() override
     {
         Expects(base::is_open());
         return std::move(m_del)(base::device());
@@ -189,31 +189,31 @@ private:
 template <typename Char>
 class basic_stdio_instream : public basic_stdio_handle_instream<Char> {
     using base = basic_stdio_handle_instream<Char>;
-    using deleter_return = nonstd::expected<void, failure>;
+    using deleter_return = expected<void, failure>;
     using deleter = auto_delete<std::FILE, deleter_return>;
 
 public:
     basic_stdio_instream() : base(nullptr) {}
 
-    nonstd::expected<std::FILE*, failure> open(const char* n, const char* f)
+    expected<std::FILE*, failure> open(const char* n, const char* f)
     {
         auto file = std::fopen(n, f);
         if (!file) {
-            return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+            return make_unexpected(SPIO_MAKE_ERRNO);
         }
         base::device() = stdio_sink(file);
         m_del = deleter(std::addressof(base::device().handle()),
                         [](std::FILE* h) -> deleter_return {
                             Expects(h);
                             if (std::fclose(h) != 0) {
-                                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                                return make_unexpected(SPIO_MAKE_ERRNO);
                             }
                             return {};
                         });
         return base::device().handle();
     }
 
-    nonstd::expected<void, failure> close() override
+    expected<void, failure> close() override
     {
         Expects(base::is_open());
         return std::move(m_del)(base::device());
@@ -225,19 +225,19 @@ private:
 template <typename Char>
 class basic_stdio_iostream : public basic_stdio_handle_iostream<Char> {
     using base = basic_stdio_handle_iostream<Char>;
-    using deleter_return = nonstd::expected<void, failure>;
+    using deleter_return = expected<void, failure>;
     using deleter = auto_delete<std::FILE, deleter_return>;
 
 public:
     basic_stdio_iostream() : base(nullptr, buffer_mode::none) {}
 
-    nonstd::expected<std::FILE*, failure> open(const char* n,
-                                               const char* f,
-                                               buffer_mode b)
+    expected<std::FILE*, failure> open(const char* n,
+                                       const char* f,
+                                       buffer_mode b)
     {
         auto file = std::fopen(n, f);
         if (!file) {
-            return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+            return make_unexpected(SPIO_MAKE_ERRNO);
         }
         base::device() = stdio_sink(file);
         base::output_base::sink_storage() =
@@ -246,14 +246,14 @@ public:
                         [](std::FILE* h) -> deleter_return {
                             Expects(h);
                             if (std::fclose(h) != 0) {
-                                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                                return make_unexpected(SPIO_MAKE_ERRNO);
                             }
                             return {};
                         });
         return base::device().handle();
     }
 
-    nonstd::expected<void, failure> close() override
+    expected<void, failure> close() override
     {
         Expects(base::is_open());
         return std::move(m_del)(base::device());

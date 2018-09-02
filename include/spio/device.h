@@ -89,28 +89,28 @@ constexpr inout in = 1;
 constexpr inout out = 2;
 
 template <typename Device>
-using writable_op = decltype(
-    std::declval<Device>().write(std::declval<gsl::span<const gsl::byte>>()));
+using writable_op =
+    decltype(std::declval<Device>().write(std::declval<span<const byte>>()));
 template <typename Device>
 using is_writable = is_detected<writable_op, Device>;
 
 template <typename Device>
-using ra_writable_op = decltype(
-    std::declval<Device>().write_at(std::declval<gsl::span<const gsl::byte>>(),
-                                    std::declval<streampos>()));
+using ra_writable_op =
+    decltype(std::declval<Device>().write_at(std::declval<span<const byte>>(),
+                                             std::declval<streampos>()));
 template <typename Device>
 using is_random_access_writable = is_detected<ra_writable_op, Device>;
 
 template <typename Device>
 using byte_writable_op =
-    decltype(std::declval<Device>().put(std::declval<gsl::byte>()));
+    decltype(std::declval<Device>().put(std::declval<byte>()));
 template <typename Device>
 using is_byte_writable = is_detected<byte_writable_op, Device>;
 
 template <typename Device>
-using vector_writable_op = decltype(std::declval<Device>().vwrite(
-    std::declval<gsl::span<gsl::span<const gsl::byte>>>(),
-    std::declval<streampos>()));
+using vector_writable_op = decltype(
+    std::declval<Device>().vwrite(std::declval<span<span<const byte>>>(),
+                                  std::declval<streampos>()));
 template <typename Device>
 using is_vector_writable = is_detected<vector_writable_op, Device>;
 
@@ -128,30 +128,29 @@ using is_sink = disjunction<is_writable<Device>,
 
 template <typename Device>
 using readable_op =
-    decltype(std::declval<Device>().read(std::declval<gsl::span<gsl::byte>>(),
+    decltype(std::declval<Device>().read(std::declval<span<byte>>(),
                                          std::declval<bool&>()));
 template <typename Device>
 using is_readable = is_detected<readable_op, Device>;
 
 template <typename Device>
-using ra_readable_op = decltype(
-    std::declval<Device>().read_at(std::declval<gsl::span<gsl::byte>>(),
-                                   std::declval<streampos>(),
-                                   std::declval<bool&>()));
+using ra_readable_op =
+    decltype(std::declval<Device>().read_at(std::declval<span<byte>>(),
+                                            std::declval<streampos>(),
+                                            std::declval<bool&>()));
 template <typename Device>
 using is_random_access_readable = is_detected<ra_readable_op, Device>;
 
 template <typename Device>
-using byte_readable_op =
-    decltype(std::declval<Device>().get(std::declval<gsl::byte&>(),
-                                        std::declval<bool&>()));
+using byte_readable_op = decltype(
+    std::declval<Device>().get(std::declval<byte&>(), std::declval<bool&>()));
 template <typename Device>
 using is_byte_readable = is_detected<byte_readable_op, Device>;
 
 template <typename Device>
-using vector_readable_op = decltype(std::declval<Device>().vread(
-    std::declval<gsl::span<gsl::span<gsl::byte>>>(),
-    std::declval<streampos>()));
+using vector_readable_op =
+    decltype(std::declval<Device>().vread(std::declval<span<span<byte>>>(),
+                                          std::declval<streampos>()));
 template <typename Device>
 using is_vector_readable = is_detected<vector_readable_op, Device>;
 

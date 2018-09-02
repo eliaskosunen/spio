@@ -35,12 +35,6 @@ struct basic_scanner;
 
 struct ascii_tag {
 };
-struct utf8_tag {
-};
-struct utf16_tag {
-};
-struct utf32_tag {
-};
 
 template <typename CharT, typename Tag = ascii_tag, typename Enable = void>
 struct encoding;
@@ -147,7 +141,7 @@ namespace detail {
             return *m_sink;
         }
 
-        SPIO_CONSTEXPR14 nonstd::optional<sink_type>& sink_storage() noexcept
+        SPIO_CONSTEXPR14 optional<sink_type>& sink_storage() noexcept
         {
             return m_sink;
         }
@@ -158,7 +152,7 @@ namespace detail {
         }
 
     private:
-        nonstd::optional<sink_type> m_sink;
+        optional<sink_type> m_sink;
     };
 
     template <typename Device, typename Encoding, typename Enable = void>
@@ -198,7 +192,7 @@ namespace detail {
             return *m_source;
         }
 
-        SPIO_CONSTEXPR14 nonstd::optional<source_type> source_storage()
+        SPIO_CONSTEXPR14 optional<source_type> source_storage()
         {
             return m_source;
         }
@@ -209,7 +203,7 @@ namespace detail {
         }
 
     private:
-        nonstd::optional<source_type> m_source;
+        optional<source_type> m_source;
     };
 }  // namespace detail
 
@@ -237,17 +231,17 @@ public:
         output_sentry(stream& s)
         {
             if (!s) {
-                m_result = nonstd::make_unexpected(sentry_error);
+                m_result = make_unexpected(sentry_error);
                 s.set_bad();
                 return;
             }
             auto t = _handle_tied(s);
             if (t.has_error()) {
-                m_result = nonstd::make_unexpected(t.error());
+                m_result = make_unexpected(t.error());
                 return;
             }
             if (!s) {
-                m_result = nonstd::make_unexpected(sentry_error);
+                m_result = make_unexpected(sentry_error);
             }
         }
 
@@ -263,32 +257,32 @@ public:
     private:
         result _handle_tied(stream& s);
 
-        nonstd::expected<void, failure> m_result{};
+        expected<void, failure> m_result{};
     };
     class input_sentry {
     public:
         input_sentry(stream& s, bool skipws = true)
         {
             if (!s) {
-                m_result = nonstd::make_unexpected(sentry_error);
+                m_result = make_unexpected(sentry_error);
                 s.set_bad();
                 return;
             }
             auto t = _handle_tied(s);
             if (t.has_error()) {
-                m_result = nonstd::make_unexpected(t.error());
+                m_result = make_unexpected(t.error());
                 return;
             }
             if (skipws) {
                 // TODO: skipws
                 /* auto w = _skipws(s); */
                 /* if(w.has_error()) { */
-                /*     m_result = nonstd::make_unexpected(t.error()); */
+                /*     m_result = make_unexpected(t.error()); */
                 /*     return; */
                 /* } */
             }
             if (!s) {
-                m_result = nonstd::make_unexpected(sentry_error);
+                m_result = make_unexpected(sentry_error);
             }
         }
 
@@ -304,7 +298,7 @@ public:
     private:
         result _handle_tied(stream& s);
 
-        nonstd::expected<void, failure> m_result{};
+        expected<void, failure> m_result{};
     };
 
     stream(device_type d, input_base i, output_base o, chain_type c)
@@ -319,7 +313,7 @@ public:
     {
         return device().is_open();
     }
-    virtual nonstd::expected<void, failure> close()
+    virtual expected<void, failure> close()
     {
         return device().close();
     }
@@ -370,7 +364,7 @@ private:
 };
 
 template <typename Stream>
-auto write(Stream& s, std::vector<gsl::byte> buf) ->
+auto write(Stream& s, std::vector<byte> buf) ->
     typename std::enable_if<is_writable_stream<Stream>::value, result>::type
 {
     auto sentry = typename Stream::output_sentry(s);
@@ -390,10 +384,10 @@ auto write(Stream& s, std::vector<gsl::byte> buf) ->
     return s.device().write(buf);
 }
 template <typename Stream>
-result write(Stream& s, gsl::span<const gsl::byte> data)
+result write(Stream& s, span<const byte> data)
 {
     if (!s.chain().output_empty()) {
-        std::vector<gsl::byte> buf(data.begin(), data.end());
+        std::vector<byte> buf(data.begin(), data.end());
         return write(s, buf);
     }
     if (s.sink().use_buffering()) {
@@ -403,7 +397,7 @@ result write(Stream& s, gsl::span<const gsl::byte> data)
 }
 
 template <typename Stream>
-result write_at(Stream& s, std::vector<gsl::byte> buf, streampos pos)
+result write_at(Stream& s, std::vector<byte> buf, streampos pos)
 {
     auto sentry = typename Stream::output_sentry(s);
     if (!sentry) {
@@ -419,14 +413,14 @@ result write_at(Stream& s, std::vector<gsl::byte> buf, streampos pos)
     return s.device().write_at(buf, Stream::encoding_type::to_device(pos));
 }
 template <typename Stream>
-result write_at(Stream& s, gsl::span<const gsl::byte> data, streampos pos)
+result write_at(Stream& s, span<const byte> data, streampos pos)
 {
-    std::vector<gsl::byte> buf(data.begin(), data.end());
+    std::vector<byte> buf(data.begin(), data.end());
     return write_at(s, buf, pos);
 }
 
 template <typename Stream>
-auto put(Stream& s, gsl::byte data) ->
+auto put(Stream& s, byte data) ->
     typename std::enable_if<is_byte_writable_stream<Stream>::value,
                             result>::type
 {
@@ -459,13 +453,13 @@ result flush(Stream& s)
     return s.sink().flush();
 }
 template <typename Stream>
-nonstd::expected<void, failure> sync(Stream& s)
+expected<void, failure> sync(Stream& s)
 {
     return s.device().sync();
 }
 
 template <typename Stream>
-result read(Stream& s, gsl::span<gsl::byte> data)
+result read(Stream& s, span<byte> data)
 {
     auto sentry = typename Stream::input_sentry(s);
     if (!sentry) {
@@ -496,22 +490,22 @@ result read(Stream& s, gsl::span<gsl::byte> data)
 
 namespace detail {
     template <typename Stream>
-    auto _read_at_putback(Stream& s, gsl::span<gsl::byte> data)
+    auto _read_at_putback(Stream& s, span<byte> data)
         -> decltype(putback(std::declval<Stream&>(),
-                            std::declval<gsl::span<gsl::byte>>()),
+                            std::declval<span<byte>>()),
                     bool())
     {
         return putback(s, data);
     }
     template <typename Stream>
-    auto _read_at_putback(Stream&, gsl::span<gsl::byte>) -> bool
+    auto _read_at_putback(Stream&, span<byte>) -> bool
     {
         return {};
     }
 }  // namespace detail
 
 template <typename Stream>
-result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
+result read_at(Stream& s, span<byte> data, streampos pos)
 {
     auto sentry = typename Stream::input_sentry(s);
     if (!sentry) {
@@ -542,7 +536,7 @@ result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
 }
 
 template <typename Stream>
-result get(Stream& s, gsl::byte& data)
+result get(Stream& s, byte& data)
 {
     auto sentry = typename Stream::input_sentry(s);
     if (!sentry) {
@@ -578,7 +572,7 @@ typename Stream::scanner_type get_scanner(Stream& s)
 }
 
 template <typename Stream>
-auto putback(Stream& s, gsl::span<const gsl::byte> d) ->
+auto putback(Stream& s, span<const byte> d) ->
     typename std::enable_if<is_readable<Stream>::value, bool>::type
 {
     s.clear_eof();
@@ -590,7 +584,7 @@ auto putback(Stream& s, gsl::span<const gsl::byte> d) ->
     return s.source().putback(d);
 }
 template <typename Stream>
-auto putback(Stream& s, gsl::byte d) ->
+auto putback(Stream& s, byte d) ->
     typename std::enable_if<is_byte_readable<Stream>::value &&
                                 !is_readable<Stream>::value,
                             bool>::type
@@ -605,9 +599,9 @@ auto putback(Stream& s, gsl::byte d) ->
 }
 
 template <typename Stream>
-nonstd::expected<streampos, failure> seek(Stream& s,
-                                          streampos pos,
-                                          inout which = in | out)
+expected<streampos, failure> seek(Stream& s,
+                                  streampos pos,
+                                  inout which = in | out)
 {
     auto ret = s.device().seek(Stream::encoding_type::to_device(pos), which);
     if (ret) {
@@ -616,10 +610,10 @@ nonstd::expected<streampos, failure> seek(Stream& s,
     return ret;
 }
 template <typename Stream>
-nonstd::expected<streampos, failure> seek(Stream& s,
-                                          streamoff off,
-                                          seekdir dir,
-                                          inout which = in | out)
+expected<streampos, failure> seek(Stream& s,
+                                  streamoff off,
+                                  seekdir dir,
+                                  inout which = in | out)
 {
     auto ret =
         s.device().seek(Stream::encoding_type::to_device(off), dir, which);
@@ -629,7 +623,7 @@ nonstd::expected<streampos, failure> seek(Stream& s,
     return ret;
 }
 template <typename Stream>
-nonstd::expected<streampos, failure> tell(Stream& s, inout which = in | out)
+expected<streampos, failure> tell(Stream& s, inout which = in | out)
 {
     return seek(s, 0, seekdir::cur, which);
 }

@@ -44,7 +44,7 @@ TEST_CASE("print")
 
     SUBCASE("memory_sink")
     {
-        std::vector<gsl::byte> buf(12);
+        std::vector<spio::byte> buf(12);
         spio::memory_sink sink(buf);
         using stream_type =
             spio::stream<spio::memory_sink, spio::encoding<char>,

@@ -42,14 +42,14 @@ protected:
 };
 
 struct output_filter : filter_base {
-    using buffer_type = std::vector<gsl::byte>;
+    using buffer_type = std::vector<byte>;
 
     virtual result write(buffer_type& data) = 0;
 };
 struct byte_output_filter : filter_base {
     using buffer_type = void;
 
-    virtual result put(gsl::byte data) = 0;
+    virtual result put(byte data) = 0;
 };
 
 struct null_output_filter : output_filter {
@@ -59,7 +59,7 @@ struct null_output_filter : output_filter {
     }
 };
 struct null_byte_output_filter : byte_output_filter {
-    result put(gsl::byte data) override
+    result put(byte data) override
     {
         SPIO_UNUSED(data);
         return 1;
@@ -67,14 +67,14 @@ struct null_byte_output_filter : byte_output_filter {
 };
 
 struct input_filter : filter_base {
-    using buffer_type = gsl::span<gsl::byte>;
+    using buffer_type = span<byte>;
 
     virtual result read(buffer_type& data) = 0;
 };
 struct byte_input_filter : filter_base {
     using buffer_type = void;
 
-    virtual result get(gsl::byte& data) = 0;
+    virtual result get(byte& data) = 0;
 };
 
 struct null_input_filter : input_filter {
@@ -84,7 +84,7 @@ struct null_input_filter : input_filter {
     }
 };
 struct null_byte_input_filter : byte_input_filter {
-    result get(gsl::byte& data) override
+    result get(byte& data) override
     {
         SPIO_UNUSED(data);
         return 1;
@@ -358,12 +358,12 @@ class byte_sink_filter_chain
             return r;
         }
 
-        gsl::byte b;
+        byte b;
         result& r;
     };
 
 public:
-    result put(gsl::byte b)
+    result put(byte b)
     {
         if (base::get_static().size() > 0) {
             auto res = result{1};
@@ -469,12 +469,12 @@ class byte_source_filter_chain
             return r;
         }
 
-        gsl::byte& b;
+        byte& b;
         result& r;
     };
 
 public:
-    result get(gsl::byte& b)
+    result get(byte& b)
     {
         if (base::get_static().size() > 0) {
             auto res = result{1};

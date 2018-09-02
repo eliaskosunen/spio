@@ -20,12 +20,12 @@
 
 TEST_CASE("source_buffer")
 {
-    std::vector<gsl::byte> container = [&]() {
+    std::vector<spio::byte> container = [&]() {
         std::string str =
             "Hello world!\nHello another line!\nfoobar qwerty 1234567890!";
-        auto s = gsl::as_writeable_bytes(gsl::make_span(
+        auto s = spio::as_writeable_bytes(spio::make_span(
             &*str.begin(), static_cast<std::ptrdiff_t>(str.size())));
-        return std::vector<gsl::byte>(s.begin(), s.end());
+        return std::vector<spio::byte>(s.begin(), s.end());
     }();
     spio::vector_source source(container);
     spio::basic_buffered_readable<spio::vector_source> buf(
@@ -43,9 +43,9 @@ TEST_CASE("source_buffer")
 
     SUBCASE("single full read")
     {
-        std::vector<gsl::byte> read(container.size());
+        std::vector<spio::byte> read(container.size());
         bool eof = false;
-        auto ret = buf.read(gsl::make_span(read), eof);
+        auto ret = buf.read(spio::make_span(read), eof);
         CHECK(read.size() == container.size());
         CHECK(ret.value() == container.size());
         CHECK(!ret.has_error());
@@ -56,9 +56,9 @@ TEST_CASE("source_buffer")
 
     SUBCASE("basic putback")
     {
-        std::vector<gsl::byte> read(container.size());
+        std::vector<spio::byte> read(container.size());
         bool eof = false;
-        auto ret = buf.read(gsl::make_span(read).first(1), eof);
+        auto ret = buf.read(spio::make_span(read).first(1), eof);
         CHECK(ret.value() == 1);
         CHECK(!ret.has_error());
         CHECK(read[0] == container[0]);
@@ -66,14 +66,14 @@ TEST_CASE("source_buffer")
         CHECK(buf.free_space() ==
               size - static_cast<std::ptrdiff_t>(container.size()) + 1);
 
-        ret = buf.putback(gsl::make_span(read).first(1));
+        ret = buf.putback(spio::make_span(read).first(1));
         CHECK(ret.value() == 1);
         CHECK(!ret.has_error());
         CHECK(buf.in_use() == container.size());
         CHECK(buf.free_space() ==
               size - static_cast<std::ptrdiff_t>(container.size()));
 
-        ret = buf.read(gsl::make_span(read), eof);
+        ret = buf.read(spio::make_span(read), eof);
         CHECK(!ret.has_error());
         CHECK(read == container);
         CHECK(buf.free_space() == size);

@@ -30,6 +30,13 @@
 
 #include "nonstd/optional.hpp"
 
+namespace spio {
+SPIO_BEGIN_NAMESPACE
+using ::nonstd::optional;
+using ::nonstd::nullopt;
+SPIO_END_NAMESPACE
+}  // namespace spio
+
 #if SPIO_GCC
 #pragma GCC diagnostic pop
 #endif

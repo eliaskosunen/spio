@@ -34,7 +34,7 @@ namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename Device>
-result write_all(Device& d, gsl::span<const gsl::byte> s)
+result write_all(Device& d, span<const byte> s)
 {
     auto total_written = 0;
     for (auto i = 0; i < SPIO_WRITE_ALL_MAX_ATTEMPTS; ++i) {
@@ -53,9 +53,9 @@ result write_all(Device& d, gsl::span<const gsl::byte> s)
 }
 
 template <typename Device>
-nonstd::expected<gsl::span<typename Device::const_buffer_type>, failure>
-vwrite_all(gsl::span<typename Device::const_buffer_type> bufs,
-           streampos pos = 0)
+expected<span<typename Device::const_buffer_type>, failure> vwrite_all(
+    span<typename Device::const_buffer_type> bufs,
+    streampos pos = 0)
 {
     SPIO_UNUSED(bufs);
     SPIO_UNUSED(pos);
@@ -114,7 +114,7 @@ class basic_buffered_writable
 
 public:
     using writable_type = typename base::sink_type;
-    using buffer_type = std::vector<gsl::byte>;
+    using buffer_type = std::vector<byte>;
     using size_type = std::ptrdiff_t;
 
     basic_buffered_writable(writable_type& w,
@@ -124,12 +124,12 @@ public:
     {
     }
 
-    result write(gsl::span<const gsl::byte> s)
+    result write(span<const byte> s)
     {
         bool f = false;
         return write(s, f);
     }
-    result write(gsl::span<const gsl::byte> s, bool& flushed)
+    result write(span<const byte> s, bool& flushed)
     {
         Expects(use_buffering());
 
@@ -151,11 +151,11 @@ public:
         // TODO: rewrite
         auto i = s.size() - 1;
         for (; i != -1; --i) {
-            if (*(s.begin() + i) == gsl::to_byte('\n')) {
+            if (*(s.begin() + i) == to_byte('\n')) {
                 break;
             }
         }
-        auto first = i != -1 ? gsl::make_span(s.begin(), i + 1) : s;
+        auto first = i != -1 ? make_span(s.begin(), i + 1) : s;
         auto n = std::min(first.size(), free_space());
         std::copy(first.begin(), first.begin() + n, m_buf.begin() + m_next);
         m_next += n;
@@ -178,7 +178,7 @@ public:
     {
         Expects(use_buffering());
 
-        auto res = base::get().write(gsl::make_span(m_buf.data(), in_use()));
+        auto res = base::get().write(make_span(m_buf.data(), in_use()));
         if (SPIO_LIKELY(res.value() == in_use())) {
             m_next = 0;
             return res;
@@ -228,7 +228,7 @@ public:
     }
 
 private:
-    size_type write_to_buffer(gsl::span<const gsl::byte> s) noexcept
+    size_type write_to_buffer(span<const byte> s) noexcept
     {
         Expects(free_space() >= s.size());
         std::copy(s.begin(), s.end(), m_buf.begin() + m_next);

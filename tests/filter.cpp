@@ -21,7 +21,7 @@
 struct nullify_output_filter : spio::output_filter {
     spio::result write(buffer_type& data) override
     {
-        std::fill(data.begin(), data.end(), gsl::to_byte(0));
+        std::fill(data.begin(), data.end(), spio::to_byte(0));
         return static_cast<size_type>(data.size());
     }
 };
@@ -29,7 +29,7 @@ struct nullify_output_filter : spio::output_filter {
 struct nullify_input_filter : spio::input_filter {
     spio::result read(buffer_type& data) override
     {
-        std::fill(data.begin(), data.end(), gsl::to_byte(0));
+        std::fill(data.begin(), data.end(), spio::to_byte(0));
         return data.size();
     }
 };
@@ -46,9 +46,9 @@ TEST_CASE("sink_filter")
 
     auto str = "Hello world!";
     auto len = std::strlen(str);
-    std::vector<gsl::byte> buffer(
-        reinterpret_cast<const gsl::byte*>(str),
-        reinterpret_cast<const gsl::byte*>(str) + len);
+    std::vector<spio::byte> buffer(
+        reinterpret_cast<const spio::byte*>(str),
+        reinterpret_cast<const spio::byte*>(str) + len);
 
     CHECK_EQ(std::strcmp(str, reinterpret_cast<char*>(buffer.data())), 0);
     auto r = chain.write(buffer);
@@ -64,7 +64,7 @@ TEST_CASE("sink_filter")
     CHECK(!r.has_error());
     CHECK(std::strlen(reinterpret_cast<char*>(buffer.data())) == 0);
     for (auto& b : buffer) {
-        CHECK(b == gsl::to_byte(0));
+        CHECK(b == spio::to_byte(0));
     }
 }
 
@@ -80,16 +80,16 @@ TEST_CASE("source_filter")
 
     auto str = "Hello world!";
     auto len = std::strlen(str);
-    std::vector<gsl::byte> buffer(
-        reinterpret_cast<const gsl::byte*>(str),
-        reinterpret_cast<const gsl::byte*>(str) + len);
+    std::vector<spio::byte> buffer(
+        reinterpret_cast<const spio::byte*>(str),
+        reinterpret_cast<const spio::byte*>(str) + len);
     spio::vector_source source(buffer);
 
-    std::vector<gsl::byte> dest(len);
-    auto d = gsl::make_span(dest);
+    std::vector<spio::byte> dest(len);
+    auto d = spio::make_span(dest);
 
     bool eof = false;
-    source.read(gsl::as_writeable_bytes(gsl::make_span(
+    source.read(spio::as_writeable_bytes(spio::make_span(
                     dest.data(), static_cast<std::ptrdiff_t>(dest.size()))),
                 eof);
     CHECK(eof);
@@ -112,7 +112,7 @@ TEST_CASE("source_filter")
     CHECK(std::strlen(reinterpret_cast<char*>(dest.data())) == 0);
     size_t i = 0;
     for (auto& b : dest) {
-        CHECK(b == gsl::to_byte(0));
+        CHECK(b == spio::to_byte(0));
         CHECK(buffer[i] != b);
         ++i;
     }

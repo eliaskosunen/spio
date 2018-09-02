@@ -37,6 +37,13 @@
 
 #include "nonstd/expected.hpp"
 
+namespace spio {
+SPIO_BEGIN_NAMESPACE
+using ::nonstd::expected;
+using ::nonstd::make_unexpected;
+SPIO_END_NAMESPACE
+}  // namespace spio
+
 #if SPIO_CLANG
 #pragma clang diagnostic pop
 #endif

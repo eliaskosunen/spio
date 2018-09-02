@@ -43,6 +43,19 @@
 
 #include "gsl.hpp"
 
+namespace spio {
+SPIO_BEGIN_NAMESPACE
+using ::gsl::as_bytes;
+using ::gsl::as_writeable_bytes;
+using ::gsl::byte;
+using ::gsl::make_span;
+using ::gsl::span;
+using ::gsl::to_byte;
+using ::gsl::to_integer;
+using ::gsl::to_uchar;
+SPIO_END_NAMESPACE
+}  // namespace spio
+
 #if SPIO_CLANG
 #pragma clang diagnostic pop
 #endif

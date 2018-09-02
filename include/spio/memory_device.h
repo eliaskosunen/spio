@@ -34,11 +34,11 @@ namespace detail {
     struct memory_device_span;
     template <>
     struct memory_device_span<true> {
-        using type = gsl::span<const gsl::byte>;
+        using type = span<const byte>;
     };
     template <>
     struct memory_device_span<false> {
-        using type = gsl::span<gsl::byte>;
+        using type = span<byte>;
     };
 
     template <bool IsConst>
@@ -54,7 +54,7 @@ namespace detail {
         {
             return m_buf.data() != nullptr;
         }
-        nonstd::expected<void, failure> close() noexcept
+        expected<void, failure> close() noexcept
         {
             m_buf = span_type{};
             return {};
@@ -62,13 +62,13 @@ namespace detail {
 
         template <bool C = IsConst>
         SPIO_CONSTEXPR14 auto output() noexcept ->
-            typename std::enable_if<!C, gsl::span<gsl::byte>>::type
+            typename std::enable_if<!C, span<byte>>::type
         {
             Expects(is_open());
-            return gsl::as_writeable_bytes(m_buf);
+            return as_writeable_bytes(m_buf);
         }
         template <bool C = IsConst>
-        auto write_at(gsl::span<const gsl::byte> s, streampos pos) ->
+        auto write_at(span<const byte> s, streampos pos) ->
             typename std::enable_if<!C, result>::type
         {
             Expects(is_open());
@@ -79,12 +79,12 @@ namespace detail {
             return n;
         }
 
-        SPIO_CONSTEXPR14 gsl::span<const gsl::byte> input() const noexcept
+        SPIO_CONSTEXPR14 span<const byte> input() const noexcept
         {
             Expects(is_open());
-            return gsl::as_bytes(m_buf);
+            return as_bytes(m_buf);
         }
-        result read_at(gsl::span<gsl::byte> s, streampos pos, bool& eof)
+        result read_at(span<byte> s, streampos pos, bool& eof)
         {
             Expects(is_open());
             auto ext = extent();
@@ -98,7 +98,7 @@ namespace detail {
             return n;
         }
 
-        nonstd::expected<streamsize, failure> extent() const noexcept
+        expected<streamsize, failure> extent() const noexcept
         {
             return m_buf.size();
         }

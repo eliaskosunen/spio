@@ -20,14 +20,14 @@
 
 TEST_CASE("stream_ref")
 {
-    std::vector<gsl::byte> buf(24);
+    std::vector<spio::byte> buf(24);
     spio::memory_outstream stream(buf);
     spio::basic_stream_ref<spio::encoding<char>,
                            spio::random_access_writable_tag>
         ref(stream);
     const auto str = "Hello world!";
-    auto ret =
-        spio::write_at(ref, gsl::as_bytes(gsl::make_span(str, strlen(str))), 0);
+    auto ret = spio::write_at(
+        ref, spio::as_bytes(spio::make_span(str, strlen(str))), 0);
     CHECK(!ret.has_error());
     CHECK_EQ(std::memcmp(str, stream.device().output().data(), strlen(str)), 0);
     ret = spio::print_at(ref, 12, str);

@@ -54,12 +54,12 @@ auto print(Stream& s,
            basic_string_view<typename Stream::char_type> f,
            const Args&... a)
     -> decltype(write(std::declval<Stream&>(),
-                      std::declval<std::vector<gsl::byte>>()),
+                      std::declval<std::vector<byte>>()),
                 result())
 {
-    std::vector<gsl::byte> buf;
+    std::vector<byte> buf;
     buf.reserve(f.size());
-    using iterator = memcpy_back_insert_iterator<std::vector<gsl::byte>,
+    using iterator = memcpy_back_insert_iterator<std::vector<byte>,
                                                  typename Stream::char_type>;
     get_formatter(s)(iterator(buf), f,
                      fmt::make_format_args<typename fmt::format_context_t<
@@ -70,11 +70,10 @@ template <typename Stream, typename... Args>
 auto print(Stream& s,
            basic_string_view<typename Stream::char_type> f,
            const Args&... a)
-    -> decltype(put(std::declval<Stream&>(), std::declval<gsl::byte>()),
-                result())
+    -> decltype(put(std::declval<Stream&>(), std::declval<byte>()), result())
 {
-    std::vector<gsl::byte> buf;
-    using iterator = memcpy_back_insert_iterator<std::vector<gsl::byte>,
+    std::vector<byte> buf;
+    using iterator = memcpy_back_insert_iterator<std::vector<byte>,
                                                  typename Stream::char_type>;
     get_formatter(s)(iterator(buf), f,
                      fmt::make_format_args<typename fmt::format_context_t<
@@ -95,8 +94,8 @@ result print_at(Stream& s,
                 basic_string_view<typename Stream::char_type> f,
                 const Args&... a)
 {
-    std::vector<gsl::byte> buf;
-    using iterator = memcpy_back_insert_iterator<std::vector<gsl::byte>,
+    std::vector<byte> buf;
+    using iterator = memcpy_back_insert_iterator<std::vector<byte>,
                                                  typename Stream::char_type>;
     get_formatter(s)(iterator(buf), f,
                      fmt::make_format_args<typename fmt::format_context_t<

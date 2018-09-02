@@ -46,7 +46,7 @@ namespace detail {
 
     class ring_base_posix {
     public:
-        using value_type = gsl::byte;
+        using value_type = byte;
         using size_type = std::ptrdiff_t;
 
         SPIO_CONSTEXPR ring_base_posix() = default;
@@ -61,7 +61,7 @@ namespace detail {
             ::munmap(m_ptr - m_size, static_cast<std::size_t>(m_size * 3));
         }
 
-        nonstd::expected<void, failure> init(size_type s) noexcept
+        expected<void, failure> init(size_type s) noexcept
         {
             auto rounded_size = round_up_power_of_two(s);
             auto page_size = ::sysconf(_SC_PAGESIZE);
@@ -70,21 +70,21 @@ namespace detail {
             char path[] = "/tmp/spio-ring-buffer-mirror-XXXXXX";
             int fd = ::mkstemp(path);
             if (fd < 0) {
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_unexpected(SPIO_MAKE_ERRNO);
             }
 
             if (::unlink(path)) {
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_unexpected(SPIO_MAKE_ERRNO);
             }
             if (::ftruncate(fd, m_size)) {
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_unexpected(SPIO_MAKE_ERRNO);
             }
 
-            m_ptr = static_cast<gsl::byte*>(
+            m_ptr = static_cast<byte*>(
                 ::mmap(nullptr, static_cast<std::size_t>(m_size * 3), PROT_NONE,
                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0));
             if (m_ptr == MAP_FAILED) {
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_unexpected(SPIO_MAKE_ERRNO);
             }
 
             auto addr =
@@ -92,7 +92,7 @@ namespace detail {
                        PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED, fd, 0);
             if (addr != m_ptr) {
                 ::munmap(m_ptr, static_cast<std::size_t>(m_size * 2));
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_unexpected(SPIO_MAKE_ERRNO);
             }
 
             auto addr2 =
@@ -101,7 +101,7 @@ namespace detail {
             if (addr2 != m_ptr + m_size) {
                 ::munmap(m_ptr, static_cast<std::size_t>(m_size * 2));
                 /* ::munmap(addr, real_size); */
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_unexpected(SPIO_MAKE_ERRNO);
             }
 
             auto addr3 =
@@ -110,21 +110,21 @@ namespace detail {
             if (addr3 != m_ptr + m_size * 2) {
                 ::munmap(m_ptr, static_cast<std::size_t>(m_size * 2));
                 /* ::munmap(addr, real_size); */
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_unexpected(SPIO_MAKE_ERRNO);
             }
 
             if (::close(fd)) {
                 ::munmap(m_ptr, static_cast<std::size_t>(m_size * 2));
                 /* ::munmap(addr, real_size); */
                 /* ::munmap(addr2, real_size); */
-                return nonstd::make_unexpected(SPIO_MAKE_ERRNO);
+                return make_unexpected(SPIO_MAKE_ERRNO);
             }
             m_ptr += m_size;
 
             return {};
         }
 
-        size_type write(gsl::span<const gsl::byte> s)
+        size_type write(span<const byte> s)
         {
             auto written =
                 std::min(static_cast<size_type>(s.size()), free_space());
@@ -138,7 +138,7 @@ namespace detail {
             }
             return written;
         }
-        size_type write_tail(gsl::span<const gsl::byte> s)
+        size_type write_tail(span<const byte> s)
         {
             auto written =
                 std::min(static_cast<size_type>(s.size()), free_space());
@@ -153,7 +153,7 @@ namespace detail {
             }
             return written;
         }
-        size_type read(gsl::span<gsl::byte> s)
+        size_type read(span<byte> s)
         {
             if (empty()) {
                 return 0;
@@ -171,10 +171,10 @@ namespace detail {
             return n;
         }
 
-        gsl::span<const value_type> peek(size_type n) const noexcept
+        span<const value_type> peek(size_type n) const noexcept
         {
             Expects(size() >= n);
-            return gsl::make_span(m_ptr + m_tail - n, n);
+            return make_span(m_ptr + m_tail - n, n);
         }
 
         SPIO_CONSTEXPR14 void clear() noexcept
@@ -238,9 +238,9 @@ namespace detail {
                 return {m_ring, m_n, 1};
             }
 
-            gsl::span<const gsl::byte> operator*() noexcept
+            span<const byte> operator*() noexcept
             {
-                return gsl::make_span(m_ring.data() + m_ring.tail(), m_n);
+                return make_span(m_ring.data() + m_ring.tail(), m_n);
             }
 
             SPIO_CONSTEXPR14 direct_read_t& operator++() noexcept
@@ -297,9 +297,9 @@ namespace detail {
                 return {m_ring, m_n, 1};
             }
 
-            gsl::span<gsl::byte> operator*() noexcept
+            span<byte> operator*() noexcept
             {
-                return gsl::make_span(m_ring.data() + m_ring.head(), m_n);
+                return make_span(m_ring.data() + m_ring.head(), m_n);
             }
 
             SPIO_CONSTEXPR14 direct_write_t& operator++() noexcept
@@ -364,20 +364,20 @@ namespace detail {
 #else
     class ring_base_std {
     public:
-        using value_type = gsl::byte;
+        using value_type = byte;
         using storage_type = std::unique_ptr<value_type[]>;
         using size_type = std::ptrdiff_t;
 
         SPIO_CONSTEXPR ring_base_std() = default;
 
-        nonstd::expected<void, failure> init(size_type s)
+        expected<void, failure> init(size_type s)
         {
             m_buf = storage_type(new value_type[static_cast<std::size_t>(s)]);
             m_size = s;
             return {};
         }
 
-        size_type write(gsl::span<const gsl::byte> s)
+        size_type write(span<const byte> s)
         {
             if (m_head < m_tail) {
                 auto n =
@@ -403,7 +403,7 @@ namespace detail {
 
             return write(s);
         }
-        size_type write_tail(gsl::span<const gsl::byte> s)
+        size_type write_tail(span<const byte> s)
         {
             auto written = std::min(static_cast<size_type>(s.size()), m_tail);
             std::reverse_copy(s.rbegin(), s.rbegin() + written,
@@ -421,7 +421,7 @@ namespace detail {
             m_tail = m_size - space;
             return written + space;
         }
-        size_type read(gsl::span<gsl::byte> s)
+        size_type read(span<byte> s)
         {
             if (empty()) {
                 return 0;
@@ -458,10 +458,10 @@ namespace detail {
             return read(s) + n;
         }
 
-        gsl::span<const value_type> peek(size_type n) const noexcept
+        span<const value_type> peek(size_type n) const noexcept
         {
             Expects(size() >= n);
-            return gsl::make_span(m_buf.get() + m_tail - n, n);
+            return make_span(m_buf.get() + m_tail - n, n);
         }
 
         void clear() noexcept
@@ -525,17 +525,17 @@ namespace detail {
                 return {m_ring, m_n, two_ranges() ? 2 : 1};
             }
 
-            gsl::span<const gsl::byte> operator*() noexcept
+            span<const byte> operator*() noexcept
             {
                 if (two_ranges()) {
                     if (m_i == 0) {
-                        return gsl::make_span(m_ring.data() + m_ring.tail(),
-                                              m_ring.size() - m_ring.tail());
+                        return make_span(m_ring.data() + m_ring.tail(),
+                                         m_ring.size() - m_ring.tail());
                     }
-                    return gsl::make_span(
-                        m_ring.data(), m_n - (m_ring.size() - m_ring.tail()));
+                    return make_span(m_ring.data(),
+                                     m_n - (m_ring.size() - m_ring.tail()));
                 }
-                return gsl::make_span(m_ring.data() + m_ring.tail(), m_n);
+                return make_span(m_ring.data() + m_ring.tail(), m_n);
             }
 
             direct_read_t& operator++() noexcept
@@ -551,13 +551,11 @@ namespace detail {
                 return tmp;
             }
 
-            bool operator==(const direct_read_t& r) const
-                noexcept
+            bool operator==(const direct_read_t& r) const noexcept
             {
                 return m_i == r.m_i;
             }
-            bool operator!=(const direct_read_t& r) const
-                noexcept
+            bool operator!=(const direct_read_t& r) const noexcept
             {
                 return !(*this == r);
             }
@@ -583,8 +581,8 @@ namespace detail {
         class direct_write_t {
         public:
             direct_write_t(ring_base_std& r,
-                                          size_type n,
-                                          size_type i = 0) noexcept
+                           size_type n,
+                           size_type i = 0) noexcept
                 : m_ring(r), m_n(n), m_i(i)
             {
             }
@@ -598,17 +596,17 @@ namespace detail {
                 return {m_ring, m_n, two_ranges() ? 2 : 1};
             }
 
-            gsl::span<gsl::byte> operator*() noexcept
+            span<byte> operator*() noexcept
             {
                 if (two_ranges()) {
                     if (m_i == 0) {
-                        return gsl::make_span(m_ring.data() + m_ring.head(),
-                                              m_ring.size() - m_ring.head());
+                        return make_span(m_ring.data() + m_ring.head(),
+                                         m_ring.size() - m_ring.head());
                     }
-                    return gsl::make_span(
-                        m_ring.data(), m_n - (m_ring.size() - m_ring.head()));
+                    return make_span(m_ring.data(),
+                                     m_n - (m_ring.size() - m_ring.head()));
                 }
-                return gsl::make_span(m_ring.data() + m_ring.head(), m_n);
+                return make_span(m_ring.data() + m_ring.head(), m_n);
             }
 
             direct_write_t& operator++() noexcept
@@ -624,13 +622,11 @@ namespace detail {
                 return tmp;
             }
 
-            bool operator==(const direct_write_t& r) const
-                noexcept
+            bool operator==(const direct_write_t& r) const noexcept
             {
                 return m_i == r.m_i;
             }
-            bool operator!=(const direct_write_t& r) const
-                noexcept
+            bool operator!=(const direct_write_t& r) const noexcept
             {
                 return !(*this == r);
             }
@@ -696,27 +692,27 @@ public:
         }
     }
 
-    size_type write(gsl::span<const value_type> data)
+    size_type write(span<const value_type> data)
     {
-        return m_buf.write(gsl::as_bytes(data)) /
+        return m_buf.write(as_bytes(data)) /
                static_cast<std::ptrdiff_t>(sizeof(value_type));
     }
-    size_type write_tail(gsl::span<const value_type> data)
+    size_type write_tail(span<const value_type> data)
     {
-        return m_buf.write_tail(gsl::as_bytes(data)) /
+        return m_buf.write_tail(as_bytes(data)) /
                static_cast<std::ptrdiff_t>(sizeof(value_type));
     }
-    size_type read(gsl::span<value_type> data)
+    size_type read(span<value_type> data)
     {
-        return m_buf.read(gsl::as_writeable_bytes(data)) /
+        return m_buf.read(as_writeable_bytes(data)) /
                static_cast<std::ptrdiff_t>(sizeof(value_type));
     }
 
-    gsl::span<const value_type> peek(size_type n) const noexcept
+    span<const value_type> peek(size_type n) const noexcept
     {
         auto s =
             m_buf.peek(n * static_cast<std::ptrdiff_t>(sizeof(value_type)));
-        return gsl::make_span(
+        return make_span(
             reinterpret_cast<const value_type*>(s.data()),
             s.size() / static_cast<std::ptrdiff_t>(sizeof(value_type)));
     }
@@ -744,26 +740,25 @@ public:
         return m_buf.free_space() / static_cast<size_type>(sizeof(value_type));
     }
 
-    gsl::span<value_type> span() noexcept
+    span<value_type> get_span() noexcept
     {
-        return gsl::make_span(reinterpret_cast<value_type*>(m_buf.data()),
-                              size());
+        return make_span(reinterpret_cast<value_type*>(m_buf.data()), size());
     }
-    gsl::span<const value_type> span() const noexcept
+    span<const value_type> get_span() const noexcept
     {
-        return gsl::make_span(reinterpret_cast<const value_type*>(m_buf.data()),
-                              size());
+        return make_span(reinterpret_cast<const value_type*>(m_buf.data()),
+                         size());
     }
 
 private:
     detail::ring_base m_buf;
 };
 template <>
-class basic_ring<gsl::byte> : public detail::ring_base {
+class basic_ring<byte> : public detail::ring_base {
     using base = detail::ring_base;
 
 public:
-    using value_type = gsl::byte;
+    using value_type = byte;
     using size_type = std::ptrdiff_t;
 
     basic_ring(size_type n) : base{}
@@ -774,17 +769,17 @@ public:
         }
     }
 
-    gsl::span<value_type> span() noexcept
+    span<value_type> get_span() noexcept
     {
-        return gsl::make_span(data(), size());
+        return make_span(data(), size());
     }
-    gsl::span<const value_type> span() const noexcept
+    span<const value_type> get_span() const noexcept
     {
-        return gsl::make_span(data(), size());
+        return make_span(data(), size());
     }
 };
 
-using ring = basic_ring<gsl::byte>;
+using ring = basic_ring<byte>;
 
 SPIO_END_NAMESPACE
 }  // namespace spio

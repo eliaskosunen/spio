@@ -20,7 +20,7 @@
 
 TEST_CASE("sink_buffer")
 {
-    std::vector<gsl::byte> container;
+    std::vector<spio::byte> container;
     spio::vector_sink sink(container);
 
     SUBCASE("construction and getters: full")
@@ -75,7 +75,7 @@ TEST_CASE("sink_buffer")
 
         bool flush = false;
         auto ret = buf.write(
-            gsl::as_bytes(gsl::make_span(
+            spio::as_bytes(spio::make_span(
                 write.data(), static_cast<std::ptrdiff_t>(write.size()))),
             flush);
         CHECK(!flush);
@@ -84,7 +84,8 @@ TEST_CASE("sink_buffer")
         CHECK(!ret.has_error());
         CHECK(buf.full());
 
-        ret = buf.write(gsl::as_bytes(gsl::make_span(write.data(), 1)), flush);
+        ret =
+            buf.write(spio::as_bytes(spio::make_span(write.data(), 1)), flush);
         CHECK(flush);
         CHECK(ret.value() == 1);
         CHECK(container.size() == write.size());
@@ -97,7 +98,7 @@ TEST_CASE("sink_buffer")
         CHECK(ret.value() == 1);
         CHECK(!ret.has_error());
         CHECK(container.size() == write.size() + 1);
-        CHECK(gsl::to_integer<char>(container.back()) == write.front());
+        CHECK(spio::to_integer<char>(container.back()) == write.front());
     }
 
     SUBCASE("line buffering")
@@ -108,7 +109,7 @@ TEST_CASE("sink_buffer")
 
         bool flush = false;
         auto ret = buf.write(
-            gsl::as_bytes(gsl::make_span(
+            spio::as_bytes(spio::make_span(
                 write.data(), static_cast<std::ptrdiff_t>(write.size()) - 1)),
             flush);
         CHECK(!flush);
@@ -117,7 +118,8 @@ TEST_CASE("sink_buffer")
         CHECK(!ret.has_error());
         CHECK(buf.in_use() == ret.value());
 
-        ret = buf.write(gsl::as_bytes(gsl::make_span(&write.back(), 1)), flush);
+        ret =
+            buf.write(spio::as_bytes(spio::make_span(&write.back(), 1)), flush);
         CHECK(flush);
         CHECK(ret.value() == 1);
         CHECK(container.size() == write.size());

@@ -44,7 +44,7 @@ class basic_string_view {
 public:
     using traits_type = Traits;
     using value_type = CharT;
-    using span_type = gsl::span<const value_type>;
+    using span_type = span<const value_type>;
 
     using pointer = value_type*;
     using const_pointer = const value_type*;

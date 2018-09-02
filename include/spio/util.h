@@ -200,7 +200,7 @@ class memcpy_back_insert_iterator<
     Container,
     Element,
     typename std::enable_if<
-        !std::is_same<typename Container::value_type, gsl::byte>::value &&
+        !std::is_same<typename Container::value_type, byte>::value &&
         sizeof(Element) == sizeof(typename Container::value_type)>::type> {
 public:
     using value_type = void;
@@ -252,7 +252,7 @@ class memcpy_back_insert_iterator<
     Container,
     Element,
     typename std::enable_if<
-        std::is_same<typename Container::value_type, gsl::byte>::value &&
+        std::is_same<typename Container::value_type, byte>::value &&
         sizeof(Element) == sizeof(typename Container::value_type)>::type> {
 public:
     using value_type = void;
@@ -275,7 +275,7 @@ public:
 
     memcpy_back_insert_iterator& operator=(const element_type& value) noexcept
     {
-        m_container->push_back(gsl::to_byte(value));
+        m_container->push_back(to_byte(value));
         return *this;
     }
 

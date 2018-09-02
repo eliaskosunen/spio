@@ -26,11 +26,13 @@
 
 #include "nonstd/variant.hpp"
 
+namespace spio {
 SPIO_BEGIN_NAMESPACE
-
 namespace nonstd = ::nonstd;
 
+using ::nonstd::variant;
 SPIO_END_NAMESPACE
+}  // namespace spio
 
 #if SPIO_CLANG
 #pragma clang diagnostic pop

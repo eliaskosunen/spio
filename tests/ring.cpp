@@ -31,7 +31,7 @@ TEST_CASE("ring")
         spio::ring r(10);
         CHECK(r.empty());
         CHECK(r.size() >= 10);
-        CHECK(r.span().size() == r.size());
+        CHECK(r.get_span().size() == r.size());
         CHECK(r.in_use() == 0);
         CHECK(r.free_space() == r.size());
     }
@@ -41,18 +41,18 @@ TEST_CASE("ring")
         spio::ring r(1024);
         char str[] = "Hello world!";
         auto strspan =
-            gsl::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1);
+            spio::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1);
 
-        CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
+        CHECK(r.write(spio::as_bytes(strspan)) == strspan.size());
         CHECK(r.in_use() == strspan.size());
         CHECK(!r.empty());
 
-        CHECK(r.read(gsl::as_writeable_bytes(strspan)) == strspan.size());
+        CHECK(r.read(spio::as_writeable_bytes(strspan)) == strspan.size());
         CHECK_EQ(std::strcmp(strspan.data(), "Hello world!"), 0);
         CHECK(r.in_use() == 0);
         CHECK(r.empty());
 
-        CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
+        CHECK(r.write(spio::as_bytes(strspan)) == strspan.size());
         CHECK(r.in_use() == strspan.size());
         CHECK(!r.empty());
 
@@ -66,18 +66,18 @@ TEST_CASE("ring")
         spio::ring r(1024);
         char str[] = "Hello world!";
         auto strspan =
-            gsl::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1);
+            spio::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1);
 
-        CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
+        CHECK(r.write(spio::as_bytes(strspan)) == strspan.size());
         CHECK(r.in_use() == strspan.size());
         CHECK(!r.empty());
 
         strspan[1] = 'a';
-        CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
+        CHECK(r.write(spio::as_bytes(strspan)) == strspan.size());
         CHECK(r.in_use() == strspan.size() * 2);
 
         std::string readbuf(static_cast<std::size_t>(strspan.size() * 2), '\0');
-        CHECK(r.read(gsl::as_writeable_bytes(gsl::make_span(
+        CHECK(r.read(spio::as_writeable_bytes(spio::make_span(
                   &readbuf[0], static_cast<std::ptrdiff_t>(readbuf.size())))) ==
               readbuf.size());
         CHECK_EQ(std::strcmp(readbuf.data(), "Hello world!Hallo world!"), 0);
@@ -90,19 +90,19 @@ TEST_CASE("ring")
         spio::ring r(1024);
         char str[] = "Hello world!";
         auto strspan =
-            gsl::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1);
+            spio::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1);
 
-        CHECK(r.write(gsl::as_bytes(strspan)) == strspan.size());
+        CHECK(r.write(spio::as_bytes(strspan)) == strspan.size());
         CHECK(r.in_use() == strspan.size());
         CHECK(!r.empty());
 
         std::array<char, 4> tailwrite{{'1', '2', '3', '4'}};
-        auto tailspan = gsl::make_span(tailwrite);
-        CHECK(r.write_tail(gsl::as_bytes(tailspan)) == tailspan.size());
+        auto tailspan = spio::make_span(tailwrite);
+        CHECK(r.write_tail(spio::as_bytes(tailspan)) == tailspan.size());
         CHECK(r.in_use() == strspan.size() + tailspan.size());
 
         std::string readbuf(static_cast<std::size_t>(r.in_use()), '\0');
-        CHECK(r.read(gsl::as_writeable_bytes(gsl::make_span(
+        CHECK(r.read(spio::as_writeable_bytes(spio::make_span(
                   &readbuf[0], static_cast<std::ptrdiff_t>(readbuf.size())))) ==
               readbuf.size());
         CHECK_EQ(std::strcmp(readbuf.data(), "1234Hello world!"), 0);
@@ -113,8 +113,8 @@ TEST_CASE("ring")
     {
         spio::ring r(1024);
         char str[] = "Hello world";
-        auto strspan = gsl::as_writeable_bytes(
-            gsl::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1));
+        auto strspan = spio::as_writeable_bytes(
+            spio::make_span(str, static_cast<std::ptrdiff_t>(sizeof str) - 1));
 
         {
             auto it = strspan.begin();

@@ -36,7 +36,7 @@ namespace spio {
 SPIO_BEGIN_NAMESPACE
 
 template <typename Readable>
-result read_all(Readable& d, gsl::span<gsl::byte> s, bool& eof)
+result read_all(Readable& d, span<byte> s, bool& eof)
 {
     auto total_read = 0;
     for (auto i = 0; i < SPIO_READ_ALL_MAX_ATTEMPTS; ++i) {
@@ -58,9 +58,9 @@ result read_all(Readable& d, gsl::span<gsl::byte> s, bool& eof)
 }
 
 template <typename VectorReadable>
-nonstd::expected<gsl::span<typename VectorReadable::buffer_type>, failure>
-vread_all(gsl::span<typename VectorReadable::buffer_type> bufs,
-          streampos pos = 0)
+expected<span<typename VectorReadable::buffer_type>, failure> vread_all(
+    span<typename VectorReadable::buffer_type> bufs,
+    streampos pos = 0)
 {
     SPIO_UNUSED(bufs);
     SPIO_UNUSED(pos);
@@ -152,7 +152,7 @@ public:
         return m_buffer.size();
     }
 
-    result read(gsl::span<gsl::byte> s, bool& eof)
+    result read(span<byte> s, bool& eof)
     {
         auto r = [&]() -> result {
             if (in_use() < s.size() && !m_eof) {
@@ -168,7 +168,7 @@ public:
         Ensures(bytes_read == s.size());
         return {bytes_read, r.inspect_error()};
     }
-    result putback(gsl::span<gsl::byte> s)
+    result putback(span<byte> s)
     {
 #if SPIO_GCC
 #pragma GCC diagnostic push
@@ -213,7 +213,7 @@ private:
         m_buffer.move_head(-(n - has_read));
         return has_read;
     }
-    size_type read_from_buffer(gsl::span<gsl::byte> s)
+    size_type read_from_buffer(span<byte> s)
     {
         return m_buffer.read(s);
     }
