@@ -340,12 +340,12 @@ private:
     streampos m_pos;
 };
 
-template <typename StreamRef, typename Char>
+template <typename StreamRef, typename Encoding>
 class basic_scan_context {
 public:
     using ref_type = StreamRef;
-    using character_type = Char;
-    using char_type = typename Char::type;
+    using encoding_type = Encoding;
+    using char_type = typename Encoding::value_type;
     using parse_context_type = basic_scan_parse_context<char_type>;
     using locale_type = basic_scan_locale<char_type>;
 
@@ -430,15 +430,15 @@ auto scan(Stream& s,
                                        std::declval<gsl::span<gsl::byte>>()),
                                   nonstd::expected<void, failure>())
 {
-    using char_type = typename Stream::character_type;
-    using ref_type = basic_scan_stream_ref<char_type, readable_tag>;
-    using context_type = basic_scan_context<ref_type, char_type>;
+    using encoding_type = typename Stream::encoding_type;
+    using ref_type = basic_scan_stream_ref<encoding_type, readable_tag>;
+    using context_type = basic_scan_context<ref_type, encoding_type>;
     using args_type = basic_scan_args<context_type>;
 
     auto r = typename ref_type::ref_type(s);
     auto ref = ref_type(r);
     auto ctx = context_type(ref, f, typename context_type::locale_type());
-    auto args = make_scan_args<context_type, typename char_type::type>(a...);
+    auto args = make_scan_args<context_type>(a...);
     return get_scanner(ref)(ctx, args_type(args.data()));
 }
 template <typename Stream, typename... Args>
@@ -448,16 +448,16 @@ auto scan(Stream& s,
     -> decltype(get(std::declval<Stream&>(), std::declval<gsl::byte>()),
                 nonstd::expected<void, failure>())
 {
-    using char_type = typename Stream::character_type;
-    using ref_type = basic_scan_stream_ref<char_type, byte_readable_tag>;
-    using context_type = basic_scan_context<ref_type, char_type>;
+    using encoding_type = typename Stream::encoding_type;
+    using ref_type = basic_scan_stream_ref<encoding_type, byte_readable_tag>;
+    using context_type = basic_scan_context<ref_type, encoding_type>;
     using args_type = basic_scan_args<context_type>;
 
     auto r = typename ref_type::ref_type(s);
     auto ref = ref_type(r);
     auto ctx = context_type(ref, f, typename context_type::locale_type());
-    auto args = make_scan_args<context_type, char_type>(a...);
-    return get_scanner(ref)(ctx, args_type(args.data()));
+    auto args = make_scan_args<context_type>(a...);
+    return get_scanner(r)(ctx, args_type(args.data()));
 }
 template <typename Stream, typename... Args>
 auto scan_at(Stream& s,
@@ -465,17 +465,17 @@ auto scan_at(Stream& s,
              basic_string_view<typename Stream::char_type> f,
              Args&... a) -> nonstd::expected<void, failure>
 {
-    using char_type = typename Stream::character_type;
+    using encoding_type = typename Stream::encoding_type;
     using ref_type =
-        basic_scan_stream_ref<char_type, random_access_readable_tag>;
-    using context_type = basic_scan_context<ref_type, char_type>;
+        basic_scan_stream_ref<encoding_type, random_access_readable_tag>;
+    using context_type = basic_scan_context<ref_type, encoding_type>;
     using args_type = basic_scan_args<context_type>;
 
     auto r = typename ref_type::ref_type(s);
     auto ref = ref_type(r, pos);
     auto ctx = context_type(ref, f, typename context_type::locale_type());
-    auto args = make_scan_args<context_type, char_type>(a...);
-    return get_scanner(ref)(ctx, args_type(args.data()));
+    auto args = make_scan_args<context_type>(a...);
+    return get_scanner(r)(ctx, args_type(args.data()));
 }
 
 template <typename Char,
@@ -491,8 +491,8 @@ auto scan(basic_stream_ref<Char, Tag> s,
 
     auto ref = ref_type(s);
     auto ctx = context_type(ref, f, typename context_type::locale_type{});
-    auto args = make_scan_args<context_type, Char>(a...);
-    return get_scanner(ref)(ctx, args_type(args.data()));
+    auto args = make_scan_args<context_type>(a...);
+    return get_scanner(s)(ctx, args_type(args.data()));
 }
 template <typename Char,
           typename Tag = random_access_readable_tag,
@@ -517,7 +517,7 @@ namespace detail {
     template <typename S>
     auto erased_stream_storage<Stream>::_scanner() ->
         typename std::enable_if<is_source<typename S::device_type>::value,
-                                basic_scanner<typename S::character_type>>::type
+                                basic_scanner<typename S::encoding_type>>::type
     {
         return m_stream.scanner();
     }
@@ -526,7 +526,7 @@ namespace detail {
     template <typename S>
     [[noreturn]] auto erased_stream_storage<Stream>::_scanner() ->
         typename std::enable_if<!is_source<typename S::device_type>::value,
-                                basic_scanner<typename S::character_type>>::type
+                                basic_scanner<typename S::encoding_type>>::type
     {
         SPIO_UNREACHABLE;
     }

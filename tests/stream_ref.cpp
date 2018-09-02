@@ -22,7 +22,7 @@ TEST_CASE("stream_ref")
 {
     std::vector<gsl::byte> buf(24);
     spio::memory_outstream stream(buf);
-    spio::basic_stream_ref<spio::character<char>,
+    spio::basic_stream_ref<spio::encoding<char>,
                            spio::random_access_writable_tag>
         ref(stream);
     const auto str = "Hello world!";

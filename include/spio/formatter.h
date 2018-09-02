@@ -30,17 +30,20 @@
 namespace spio {
 SPIO_BEGIN_NAMESPACE
 
-template <typename CharT>
+template <typename Encoding>
 struct basic_formatter {
+    using encoding_type = Encoding;
+    using char_type = typename Encoding::value_type;
+
     template <typename OutputIt>
     OutputIt operator()(
         OutputIt it,
-        basic_string_view<CharT> f,
+        basic_string_view<char_type> f,
         fmt::basic_format_args<
-            typename fmt::format_context_t<OutputIt, CharT>::type> a)
+            typename fmt::format_context_t<OutputIt, char_type>::type> a)
     {
         return fmt::vformat_to(it,
-                               fmt::basic_string_view<CharT>(
+                               fmt::basic_string_view<char_type>(
                                    f.data(), static_cast<size_t>(f.size())),
                                a);
     }

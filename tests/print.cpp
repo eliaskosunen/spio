@@ -24,7 +24,7 @@ TEST_CASE("print")
     {
         spio::stdio_sink sink(stdout);
         using stream_type =
-            spio::stream<spio::stdio_sink, spio::character<char>,
+            spio::stream<spio::stdio_sink, spio::encoding<char>,
                          spio::sink_filter_chain>;
         stream_type stream(
             sink, stream_type::input_base{},
@@ -36,7 +36,7 @@ TEST_CASE("print")
 
     SUBCASE("stdio_handle")
     {
-        spio::basic_stdio_handle_iostream<spio::character<char>> s(
+        spio::basic_stdio_handle_iostream<spio::encoding<char>> s(
             stdout, spio::buffer_mode::full);
         spio::print(s, "Hello world\n");
         spio::print(s, "Number: {}\n", 42);
@@ -47,7 +47,7 @@ TEST_CASE("print")
         std::vector<gsl::byte> buf(12);
         spio::memory_sink sink(buf);
         using stream_type =
-            spio::stream<spio::memory_sink, spio::character<char>,
+            spio::stream<spio::memory_sink, spio::encoding<char>,
                          spio::sink_filter_chain>;
         stream_type stream(sink, stream_type::input_base{},
                            stream_type::output_base{},

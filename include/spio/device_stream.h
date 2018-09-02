@@ -263,13 +263,13 @@ private:
     deleter m_del;
 };
 
-using stdio_handle_instream = basic_stdio_handle_instream<character<char>>;
-using stdio_handle_outstream = basic_stdio_handle_outstream<character<char>>;
-using stdio_handle_iostream = basic_stdio_handle_iostream<character<char>>;
+using stdio_handle_instream = basic_stdio_handle_instream<encoding<char>>;
+using stdio_handle_outstream = basic_stdio_handle_outstream<encoding<char>>;
+using stdio_handle_iostream = basic_stdio_handle_iostream<encoding<char>>;
 
-using stdio_instream = basic_stdio_instream<character<char>>;
-using stdio_outstream = basic_stdio_outstream<character<char>>;
-using stdio_iostream = basic_stdio_iostream<character<char>>;
+using stdio_instream = basic_stdio_instream<encoding<char>>;
+using stdio_outstream = basic_stdio_outstream<encoding<char>>;
+using stdio_iostream = basic_stdio_iostream<encoding<char>>;
 
 template <typename... StaticFilters>
 struct memory_iostream_chain
@@ -338,9 +338,9 @@ public:
     }
 };
 
-using memory_outstream = basic_memory_outstream<character<char>>;
-using memory_instream = basic_memory_instream<character<char>>;
-using memory_iostream = basic_memory_iostream<character<char>>;
+using memory_outstream = basic_memory_outstream<encoding<char>>;
+using memory_instream = basic_memory_instream<encoding<char>>;
+using memory_iostream = basic_memory_iostream<encoding<char>>;
 
 SPIO_END_NAMESPACE
 }  // namespace spio

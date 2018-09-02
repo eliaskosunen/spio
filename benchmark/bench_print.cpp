@@ -80,14 +80,13 @@ static void print_spio_write_stream(benchmark::State& state)
 
         spio::vector_sink sink{str};
         using stream_type =
-            spio::stream<spio::vector_sink, spio::character<char>,
+            spio::stream<spio::vector_sink, spio::encoding<char>,
                          spio::sink_filter_chain>;
         stream_type s(sink, stream_type::input_base{},
                       stream_type::output_base{}, stream_type::chain_type{});
         s.sink_storage() = nonstd::make_optional(
             stream_type::sink_type(sink, spio::buffer_mode::none));
-        spio::basic_stream_ref<spio::character<char>, spio::writable_tag> ref(
-            s);
+        spio::basic_stream_ref<spio::encoding<char>, spio::writable_tag> ref(s);
         state.ResumeTiming();
 
         for (auto& n : data) {
@@ -111,14 +110,13 @@ static void print_spio_write_stream_ref(benchmark::State& state)
 
         spio::vector_sink sink{str};
         using stream_type =
-            spio::stream<spio::vector_sink, spio::character<char>,
+            spio::stream<spio::vector_sink, spio::encoding<char>,
                          spio::sink_filter_chain>;
         stream_type s(sink, stream_type::input_base{},
                       stream_type::output_base{}, stream_type::chain_type{});
         s.sink_storage() = nonstd::make_optional(
             stream_type::sink_type(sink, spio::buffer_mode::none));
-        spio::basic_stream_ref<spio::character<char>, spio::writable_tag> ref(
-            s);
+        spio::basic_stream_ref<spio::encoding<char>, spio::writable_tag> ref(s);
         state.ResumeTiming();
 
         for (auto& n : data) {
@@ -142,7 +140,7 @@ static void print_spio_stream(benchmark::State& state)
 
         spio::vector_sink sink{str};
         using stream_type =
-            spio::stream<spio::vector_sink, spio::character<char>,
+            spio::stream<spio::vector_sink, spio::encoding<char>,
                          spio::sink_filter_chain>;
         stream_type s(sink, stream_type::input_base{},
                       stream_type::output_base{}, stream_type::chain_type{});
@@ -170,14 +168,13 @@ static void print_spio_stream_ref(benchmark::State& state)
 
         spio::vector_sink sink{str};
         using stream_type =
-            spio::stream<spio::vector_sink, spio::character<char>,
+            spio::stream<spio::vector_sink, spio::encoding<char>,
                          spio::sink_filter_chain>;
         stream_type s(sink, stream_type::input_base{},
                       stream_type::output_base{}, stream_type::chain_type{});
         s.sink_storage() = nonstd::make_optional(
             stream_type::sink_type(sink, spio::buffer_mode::none));
-        spio::basic_stream_ref<spio::character<char>, spio::writable_tag> ref(
-            s);
+        spio::basic_stream_ref<spio::encoding<char>, spio::writable_tag> ref(s);
         state.ResumeTiming();
 
         for (auto& n : data) {

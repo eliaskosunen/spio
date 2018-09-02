@@ -30,7 +30,7 @@ auto putchar(Stream& s, typename Stream::char_type ch) ->
     typename std::enable_if<is_writable_stream<Stream>::value, result>
 {
     auto r = write(s, gsl::as_bytes(gsl::make_span(std::addressof(ch), 1)));
-    r.value() = Stream::character_type::from_device(r.value());
+    r.value() = Stream::encoding_type::from_device(r.value());
     return r;
 }
 template <typename Stream>
@@ -44,12 +44,12 @@ auto putchar(Stream& s, typename Stream::char_type ch) ->
         auto r = put(s, b);
         if (r.error() || r.value() != 1) {
             res.value() += r.value();
-            res.value() = Stream::character_type::from_device(res.value());
+            res.value() = Stream::encoding_type::from_device(res.value());
             return make_result(res.value(), r.error());
         }
         ++res.value();
     }
-    res.value() = Stream::character_type::from_device(res.value());
+    res.value() = Stream::encoding_type::from_device(res.value());
     res.value() /= sizeof(decltype(ch));
     return res;
 }
@@ -58,7 +58,7 @@ result putchar_at(Stream& s, typename Stream::char_type ch, streampos pos)
 {
     auto r =
         write_at(s, gsl::as_bytes(gsl::make_span(std::addressof(ch), 1)), pos);
-    r.value() = Stream::character_type::from_device(r.value());
+    r.value() = Stream::encoding_type::from_device(r.value());
     return r;
 }
 
@@ -68,7 +68,7 @@ auto getchar(Stream& s, typename Stream::char_type& ch) ->
 {
     auto ret =
         read(s, gsl::as_writeable_bytes(gsl::make_span(std::addressof(ch), 1)));
-    ret.value() = Stream::character_type::from_device(ret.value());
+    ret.value() = Stream::encoding_type::from_device(ret.value());
     return ret;
 }
 template <typename Stream>
@@ -88,13 +88,13 @@ auto getchar(Stream& s, typename Stream::char_type& ch) ->
                     res.value() = 0;
                 }
             }
-            res.value() = Stream::character_type::from_device(res.value());
+            res.value() = Stream::encoding_type::from_device(res.value());
             return make_result(res.value(), r.error());
         }
         ++res.value();
     }
     ch = tmp;
-    res.value() = Stream::character_type::from_device(res.value());
+    res.value() = Stream::encoding_type::from_device(res.value());
     return res;
 }
 template <typename Stream>
@@ -102,7 +102,7 @@ result getchar_at(Stream& s, typename Stream::char_type& ch, streampos pos)
 {
     auto ret = read_at(
         s, gsl::as_writeable_bytes(gsl::make_span(std::addressof(ch), 1)), pos);
-    ret.value() = Stream::character_type::from_device(ret.value());
+    ret.value() = Stream::encoding_type::from_device(ret.value());
     return ret;
 }
 

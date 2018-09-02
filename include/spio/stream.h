@@ -33,29 +33,43 @@ SPIO_BEGIN_NAMESPACE
 template <typename CharT>
 struct basic_scanner;
 
+struct ascii_tag {
+};
+struct utf8_tag {
+};
+struct utf16_tag {
+};
+struct utf32_tag {
+};
+
+template <typename CharT, typename Tag = ascii_tag, typename Enable = void>
+struct encoding;
+
 template <typename CharT>
-struct character {
-    using type = CharT;
+struct encoding<CharT, ascii_tag> {
+    using value_type = CharT;
 
     template <template <typename...> class Chain>
     using apply_filters = Chain<>;
 
     static SPIO_CONSTEXPR streampos to_device(streampos pos) noexcept
     {
-        return pos.operator streamoff() * static_cast<streamoff>(sizeof(type));
+        return pos.operator streamoff() *
+               static_cast<streamoff>(sizeof(value_type));
     }
-    static SPIO_CONSTEXPR streamoff to_device(streamoff off) noexcept
-    {
-        return off * static_cast<streamoff>(sizeof(type));
-    }
-
     static SPIO_CONSTEXPR streampos from_device(streampos pos) noexcept
     {
-        return pos.operator streamoff() / static_cast<streamoff>(sizeof(type));
+        return pos.operator streamoff() /
+               static_cast<streamoff>(sizeof(value_type));
+    }
+
+    static SPIO_CONSTEXPR streamoff to_device(streamoff off) noexcept
+    {
+        return off * static_cast<streamoff>(sizeof(value_type));
     }
     static SPIO_CONSTEXPR streamoff from_device(streamoff off) noexcept
     {
-        return off / static_cast<streamoff>(sizeof(type));
+        return off / static_cast<streamoff>(sizeof(value_type));
     }
 };
 
@@ -86,19 +100,19 @@ namespace detail {
         }
     };
 
-    template <typename Device, typename Char, typename Enable = void>
+    template <typename Device, typename Encoding, typename Enable = void>
     class output_stream_base {
     public:
         output_stream_base() = default;
     };
-    template <typename Device, typename Char>
+    template <typename Device, typename Encoding>
     class output_stream_base<
         Device,
-        Char,
+        Encoding,
         typename std::enable_if<is_sink<Device>::value &&
                                 !is_writable<Device>::value>::type> {
     public:
-        using formatter_type = basic_formatter<Char>;
+        using formatter_type = basic_formatter<Encoding>;
 
         SPIO_CONSTEXPR output_stream_base() = default;
 
@@ -107,14 +121,14 @@ namespace detail {
             return formatter_type{};
         }
     };
-    template <typename Device, typename Char>
+    template <typename Device, typename Encoding>
     class output_stream_base<
         Device,
-        Char,
+        Encoding,
         typename std::enable_if<is_writable<Device>::value>::type> {
     public:
         using sink_type = guarded_buffered_writable<Device>;
-        using formatter_type = basic_formatter<Char>;
+        using formatter_type = basic_formatter<Encoding>;
 
         SPIO_CONSTEXPR output_stream_base() = default;
         SPIO_CONSTEXPR14 output_stream_base(sink_type s) noexcept
@@ -147,10 +161,10 @@ namespace detail {
         nonstd::optional<sink_type> m_sink;
     };
 
-    template <typename Device, typename Char, typename Enable = void>
+    template <typename Device, typename Encoding, typename Enable = void>
     class input_stream_base {
     public:
-        using scanner_type = basic_scanner<Char>;
+        using scanner_type = basic_scanner<Encoding>;
 
         input_stream_base() = default;
 
@@ -159,14 +173,14 @@ namespace detail {
             return scanner_type{};
         }
     };
-    template <typename Device, typename Char>
+    template <typename Device, typename Encoding>
     class input_stream_base<
         Device,
-        Char,
+        Encoding,
         typename std::enable_if<is_readable<Device>::value>::type> {
     public:
         using source_type = basic_buffered_readable<Device>;
-        using scanner_type = basic_scanner<Char>;
+        using scanner_type = basic_scanner<Encoding>;
 
         SPIO_CONSTEXPR input_stream_base() = default;
         SPIO_CONSTEXPR input_stream_base(source_type s) : m_source(std::move(s))
@@ -199,22 +213,24 @@ namespace detail {
     };
 }  // namespace detail
 
-template <typename Char, typename Properties>
+template <typename Encoding, typename Properties>
 class basic_stream_ref;
 
-template <typename Device, typename Char, template <typename...> class Chain>
+template <typename Device,
+          typename Encoding,
+          template <typename...> class Chain>
 class stream : public stream_base,
-               public detail::input_stream_base<Device, Char>,
-               public detail::output_stream_base<Device, typename Char::type> {
+               public detail::input_stream_base<Device, Encoding>,
+               public detail::output_stream_base<Device, Encoding> {
 public:
-    using input_base = detail::input_stream_base<Device, Char>;
-    using output_base = detail::output_stream_base<Device, typename Char::type>;
+    using input_base = detail::input_stream_base<Device, Encoding>;
+    using output_base = detail::output_stream_base<Device, Encoding>;
 
-    using character_type = Char;
-    using char_type = typename Char::type;
-    using chain_type = typename Char::template apply_filters<Chain>;
+    using encoding_type = Encoding;
+    using char_type = typename Encoding::value_type;
+    using chain_type = typename Encoding::template apply_filters<Chain>;
     using device_type = Device;
-    using tied_type = basic_stream_ref<Char, flushable_tag>;
+    using tied_type = basic_stream_ref<Encoding, flushable_tag>;
 
     class output_sentry {
     public:
@@ -400,7 +416,7 @@ result write_at(Stream& s, std::vector<gsl::byte> buf, streampos pos)
             return r;
         }
     }
-    return s.device().write_at(buf, Stream::character_type::to_device(pos));
+    return s.device().write_at(buf, Stream::encoding_type::to_device(pos));
 }
 template <typename Stream>
 result write_at(Stream& s, gsl::span<const gsl::byte> data, streampos pos)
@@ -503,7 +519,7 @@ result read_at(Stream& s, gsl::span<gsl::byte> data, streampos pos)
     }
     bool eof = false;
     auto r =
-        s.device().read_at(data, Stream::character_type::to_device(pos), eof);
+        s.device().read_at(data, Stream::encoding_type::to_device(pos), eof);
     if (r.has_error()) {
         detail::_read_at_putback(s, data.first(r.value()));
         return make_result(0, r.error());
@@ -593,9 +609,9 @@ nonstd::expected<streampos, failure> seek(Stream& s,
                                           streampos pos,
                                           inout which = in | out)
 {
-    auto ret = s.device().seek(Stream::character_type::to_device(pos), which);
+    auto ret = s.device().seek(Stream::encoding_type::to_device(pos), which);
     if (ret) {
-        ret.value() = Stream::character_type::from_device(ret.value());
+        ret.value() = Stream::encoding_type::from_device(ret.value());
     }
     return ret;
 }
@@ -606,9 +622,9 @@ nonstd::expected<streampos, failure> seek(Stream& s,
                                           inout which = in | out)
 {
     auto ret =
-        s.device().seek(Stream::character_type::to_device(off), dir, which);
+        s.device().seek(Stream::encoding_type::to_device(off), dir, which);
     if (ret) {
-        ret.value() = Stream::character_type::from_device(ret.value());
+        ret.value() = Stream::encoding_type::from_device(ret.value());
     }
     return ret;
 }
