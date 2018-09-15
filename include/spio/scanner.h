@@ -114,8 +114,7 @@ private:
     static expected<void, failure> scan_custom_arg(void* arg, Context& ctx)
     {
         typename Context::template scanner_impl_type<T> s;
-        auto& parse_ctx = ctx.parse_context();
-        auto err = s.parse(parse_ctx);
+        auto err = s.parse(ctx);
         if (!err) {
             return err;
         }
@@ -378,19 +377,47 @@ private:
     locale_type m_locale;
 };
 
+template <typename Context>
+expected<void, failure> parse_whitespace(Context& ctx)
+{
+    bool found = false;
+    auto in_span = [](typename Context::char_type ch,
+                      span<const typename Context::char_type> s) {
+        return std::find(s.begin(), s.end(), ch) != s.end();
+    };
+    while (in_span(*ctx.parse_context().begin(), ctx.locale().space)) {
+        if (!found) {
+            auto ch = ctx.stream().read_char();
+            if (!ch) {
+                return make_unexpected(ch.error());
+            }
+            if (in_span(ch.value(), ctx.locale().space)) {
+                ctx.stream().putback(ch.value());
+                found = true;
+            }
+        }
+        ctx.parse_context().advance();
+    }
+    return {};
+}
+
 namespace detail {
     template <typename CharT>
     struct scanner_parser_empty {
-        template <typename ParseContext>
-        expected<void, failure> parse(ParseContext& ctx)
+        template <typename Context>
+        expected<void, failure> parse(Context& ctx)
         {
-            if (*ctx.begin() != CharT('{')) {
+            auto err = parse_whitespace(ctx);
+            if (!err) {
+                return err;
+            }
+            if (*ctx.parse_context().begin() != CharT('{')) {
                 return make_unexpected(failure{
                     scanner_error,
                     fmt::format("Unexpected '{}' in scanner format string",
-                                ctx.begin())});
+                                ctx.parse_context().begin())});
             }
-            ctx.advance();
+            ctx.parse_context().advance();
             return {};
         }
     };

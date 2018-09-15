@@ -42,5 +42,5 @@ if(SPIO_USE_LLFIO)
         ${CMAKE_CURRENT_SOURCE_DIR}/llfio/include/llfio/v2.0)
     target_compile_features(llfio_sl PUBLIC cxx_std_17)
     target_compile_options(llfio_sl PRIVATE
-        $<$<CXX_COMPILER_ID:GNU>: -w>)
+        $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>: -w>)
 endif()
