@@ -151,24 +151,24 @@ public:
 };
 
 #ifdef _MSC_VER
-#define SPIO_DEBUG_UNREACHABLE                                            \
-    __pragma(warning(suppress : 4702)) throw failure(::spio::unreachable, \
-                                                     "Unreachable");      \
+#define SPIO_DEBUG_UNREACHABLE                                \
+    __pragma(warning(suppress : 4702)) throw ::spio::failure( \
+        ::spio::unreachable, "Unreachable");                  \
     __pragma(warning(suppress : 4702)) std::terminate()
 #else
-#define SPIO_DEBUG_UNREACHABLE                         \
-    throw failure(::spio::unreachable, "Unreachable"); \
+#define SPIO_DEBUG_UNREACHABLE                                 \
+    throw ::spio::failure(::spio::unreachable, "Unreachable"); \
     std::terminate()
 #endif
 
 #ifdef _MSC_VER
-#define SPIO_UNIMPLEMENTED_DEBUG                                            \
-    __pragma(warning(suppress : 4702)) throw failure(::spio::unimplemented, \
-                                                     "Unimplemented");      \
+#define SPIO_UNIMPLEMENTED_DEBUG                              \
+    __pragma(warning(suppress : 4702)) throw ::spio::failure( \
+        ::spio::unimplemented, "Unimplemented");              \
     __pragma(warning(suppress : 4702)) std::terminate()
 #else
-#define SPIO_UNIMPLEMENTED_DEBUG                           \
-    throw failure(::spio::unimplemented, "Unimplemented"); \
+#define SPIO_UNIMPLEMENTED_DEBUG                                   \
+    throw ::spio::failure(::spio::unimplemented, "Unimplemented"); \
     std::terminate()
 #endif
 

@@ -454,7 +454,7 @@ namespace detail {
     };
     template <typename Char>
     class basic_erased_stream {
-        template <typename Device, template <typename...> class Chain>
+        template <typename Device, typename Chain>
         using stream_type = stream<Device, Char, Chain>;
 
     public:
@@ -466,7 +466,7 @@ namespace detail {
 
         template <
             typename Device,
-            template <typename...> class Chain,
+            typename Chain,
             typename T = erased_stream_storage<stream_type<Device, Chain>>>
         basic_erased_stream(stream_type<Device, Chain>& s)
             : m_ptr(std::make_shared<T>(s))
@@ -475,7 +475,7 @@ namespace detail {
 
         template <
             typename Device,
-            template <typename...> class Chain,
+            typename Chain,
             typename T = erased_stream_storage<stream_type<Device, Chain>>>
         void set(stream_type<Device, Chain>& s)
         {
@@ -656,9 +656,7 @@ private:
     erased_stream m_stream;
 };
 
-template <typename Device,
-          typename Encoding,
-          template <typename...> class Chain>
+template <typename Device, typename Encoding, typename Chain>
 result stream<Device, Encoding, Chain>::output_sentry::_handle_tied(
     stream<Device, Encoding, Chain>& s)
 {
@@ -668,9 +666,7 @@ result stream<Device, Encoding, Chain>::output_sentry::_handle_tied(
     return {};
 }
 
-template <typename Device,
-          typename Encoding,
-          template <typename...> class Chain>
+template <typename Device, typename Encoding, typename Chain>
 result stream<Device, Encoding, Chain>::input_sentry::_handle_tied(
     stream<Device, Encoding, Chain>& s)
 {

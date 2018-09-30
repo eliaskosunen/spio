@@ -102,10 +102,8 @@ private:
     deleter_type m_deleter;
 };
 
-template <typename... StaticFilters>
-struct stdio_iostream_chain
-    : public virtual sink_filter_chain<StaticFilters...>,
-      public virtual byte_source_filter_chain<StaticFilters...> {
+struct stdio_iostream_chain : public virtual sink_filter_chain,
+                              public virtual byte_source_filter_chain {
 };
 
 template <typename Char>
@@ -271,10 +269,8 @@ using stdio_instream = basic_stdio_instream<encoding<char>>;
 using stdio_outstream = basic_stdio_outstream<encoding<char>>;
 using stdio_iostream = basic_stdio_iostream<encoding<char>>;
 
-template <typename... StaticFilters>
-struct memory_iostream_chain
-    : public virtual sink_filter_chain<StaticFilters...>,
-      public virtual source_filter_chain<StaticFilters...> {
+struct memory_iostream_chain : public virtual sink_filter_chain,
+                               public virtual source_filter_chain {
 };
 
 template <typename Char>

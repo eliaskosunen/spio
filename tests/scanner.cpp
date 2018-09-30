@@ -20,23 +20,60 @@
 
 TEST_CASE("scanner")
 {
-    std::string data{"abc"};
-    spio::memory_instream in(
-        spio::as_bytes(spio::make_span(data.data(), data.size())));
-    static_assert(spio::is_random_access_readable<spio::memory_source>::value,
-                  "");
-    static_assert(
-        spio::is_random_access_readable_stream<spio::memory_instream>::value,
-        "");
+    std::string data{"true"};
+    spio::memory_instream in(spio::as_bytes(spio::make_span(
+        data.data(), static_cast<std::ptrdiff_t>(data.size()))));
     spio::basic_stream_ref<spio::encoding<char>,
                            spio::random_access_readable_tag>
         ref(in);
-    char a{};
-    char b{};
-    char c{};
-    auto ret = spio::scan_at(ref, 0, "{}{}{}", a, b, c);
+
+    SUBCASE("char")
+    {
+        char t{};
+        char r{};
+        char u{};
+        char e{};
+        auto ret = spio::scan_at(ref, 0, "{}{}{}{}", t, r, u, e);
+        CHECK(ret.operator bool());
+        CHECK(t == 't');
+        CHECK(r == 'r');
+        CHECK(u == 'u');
+        CHECK(e == 'e');
+    }
+    SUBCASE("char span")
+    {
+        std::array<char, 4> arr{{0}};
+        auto s = spio::span<char>(arr);
+        auto ret = spio::scan_at(ref, 0, "{}", s);
+        CHECK(ret.operator bool());
+        CHECK_EQ(std::equal(data.begin(), data.end(), arr.begin()), true);
+    }
+    SUBCASE("bool")
+    {
+        bool val{};
+        auto ret = spio::scan_at(ref, 0, "{}", val);
+        CHECK(ret.operator bool());
+        if (!ret) {
+            puts(ret.error().what());
+        }
+        CHECK(val);
+    }
+}
+
+TEST_CASE("scanner int")
+{
+    std::string data{"420"};
+    spio::memory_instream in(spio::as_bytes(spio::make_span(
+        data.data(), static_cast<std::ptrdiff_t>(data.size()))));
+    spio::basic_stream_ref<spio::encoding<char>,
+                           spio::random_access_readable_tag>
+        ref(in);
+
+    int val{};
+    auto ret = spio::scan_at(ref, 0, "{}", val);
     CHECK(ret.operator bool());
-    CHECK(a == 'a');
-    CHECK(b == 'b');
-    CHECK(c == 'c');
+    if (!ret) {
+        puts(ret.error().what());
+    }
+    CHECK(val == 420);
 }

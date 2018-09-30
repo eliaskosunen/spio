@@ -41,12 +41,14 @@ struct basic_scan_locale {
     span<const CharT> space;
     span<const CharT> thousand_sep;
     span<const CharT> decimal_sep;
+    span<const CharT> true_str;
+    span<const CharT> false_str;
 };
 
 template <typename CharT, size_t N>
 span<CharT> strspan(CharT (&str)[N])
 {
-    return make_span(str, N);
+    return make_span(str, N - 1);
 }
 
 template <typename CharT>
@@ -58,28 +60,32 @@ template <>
 inline basic_scan_locale<char> classic_scan_locale()
 {
     static basic_scan_locale<char> locale{strspan(" \r\n\t\v"), strspan(" ,"),
-                                          strspan(".")};
+                                          strspan("."), strspan("true"),
+                                          strspan("false")};
     return locale;
 }
 template <>
 inline basic_scan_locale<wchar_t> classic_scan_locale()
 {
-    static basic_scan_locale<wchar_t> locale{strspan(L" \r\n\t\v"),
-                                             strspan(L" ,"), strspan(L".")};
+    static basic_scan_locale<wchar_t> locale{
+        strspan(L" \r\n\t\v"), strspan(L" ,"), strspan(L"."), strspan(L"true"),
+        strspan(L"false")};
     return locale;
 }
 template <>
 inline basic_scan_locale<char16_t> classic_scan_locale()
 {
-    static basic_scan_locale<char16_t> locale{strspan(u" \r\n\t\v"),
-                                              strspan(u" ,"), strspan(u".")};
+    static basic_scan_locale<char16_t> locale{
+        strspan(u" \r\n\t\v"), strspan(u" ,"), strspan(u"."), strspan(u"true"),
+        strspan(u"false")};
     return locale;
 }
 template <>
 inline basic_scan_locale<char32_t> classic_scan_locale()
 {
-    static basic_scan_locale<char32_t> locale{strspan(U" \r\n\t\v"),
-                                              strspan(U" ,"), strspan(U".")};
+    static basic_scan_locale<char32_t> locale{
+        strspan(U" \r\n\t\v"), strspan(U" ,"), strspan(U"."), strspan(U"true"),
+        strspan(U"false")};
     return locale;
 }
 
@@ -92,6 +98,30 @@ namespace detail {
         fn_type* scan;
     };
 }  // namespace detail
+
+template <typename Context>
+expected<void, failure> parse_whitespace(Context& ctx)
+{
+    bool found = false;
+    auto in_span = [](typename Context::char_type ch,
+                      span<const typename Context::char_type> s) {
+        return std::find(s.begin(), s.end(), ch) != s.end();
+    };
+    while (in_span(*ctx.parse_context().begin(), ctx.locale().space)) {
+        if (!found) {
+            auto ch = ctx.stream().read_char();
+            if (!ch) {
+                return make_unexpected(ch.error());
+            }
+            if (in_span(ch.value(), ctx.locale().space)) {
+                ctx.stream().putback(ch.value());
+                found = true;
+            }
+        }
+        ctx.parse_context().advance();
+    }
+    return {};
+}
 
 template <typename Context>
 class basic_scan_arg {
@@ -118,6 +148,10 @@ private:
         if (!err) {
             return err;
         }
+        err = parse_whitespace(ctx);
+        if (!err) {
+            return err;
+        }
         return s.scan(*static_cast<T*>(arg), ctx);
     }
 
@@ -138,7 +172,8 @@ public:
 
     span<basic_scan_arg<Context>> data()
     {
-        return make_span(m_data.data(), m_data.size());
+        return make_span(m_data.data(),
+                         static_cast<std::ptrdiff_t>(m_data.size()));
     }
 
 private:
@@ -231,6 +266,7 @@ public:
 
     expected<char_type, failure> read_char()
     {
+        // TODO: encoding
         char_type ch{};
         auto ret = getchar(m_ref, ch);
         if (ret.has_error()) {
@@ -268,6 +304,7 @@ public:
 
     expected<char_type, failure> read_char()
     {
+        // TODO: encoding
         char_type ch{};
         auto ret = getchar(m_ref, ch);
         if (ret.has_error()) {
@@ -315,26 +352,33 @@ public:
 
     expected<char_type, failure> read_char()
     {
+        // TODO: encoding
         char_type ch{};
         auto ret = getchar_at(m_ref, ch, m_pos);
-        m_pos += ret.value();
         if (ret.has_error()) {
             return make_unexpected(ret.error());
         }
+        m_pos += ret.value();
+        m_read += ret.value();
         return ch;
     }
     bool putback(char_type)
     {
+        m_pos -= 1;
+        m_read--;
         return true;
     }
     bool putback_all()
     {
+        m_pos -= m_read;
+        m_read = 0;
         return true;
     }
 
 private:
     ref_type m_ref;
     streampos m_pos;
+    streamoff m_read{0};
 };
 
 template <typename StreamRef, typename Encoding>
@@ -377,40 +421,12 @@ private:
     locale_type m_locale;
 };
 
-template <typename Context>
-expected<void, failure> parse_whitespace(Context& ctx)
-{
-    bool found = false;
-    auto in_span = [](typename Context::char_type ch,
-                      span<const typename Context::char_type> s) {
-        return std::find(s.begin(), s.end(), ch) != s.end();
-    };
-    while (in_span(*ctx.parse_context().begin(), ctx.locale().space)) {
-        if (!found) {
-            auto ch = ctx.stream().read_char();
-            if (!ch) {
-                return make_unexpected(ch.error());
-            }
-            if (in_span(ch.value(), ctx.locale().space)) {
-                ctx.stream().putback(ch.value());
-                found = true;
-            }
-        }
-        ctx.parse_context().advance();
-    }
-    return {};
-}
-
 namespace detail {
     template <typename CharT>
     struct scanner_parser_empty {
         template <typename Context>
         expected<void, failure> parse(Context& ctx)
         {
-            auto err = parse_whitespace(ctx);
-            if (!err) {
-                return err;
-            }
             if (*ctx.parse_context().begin() != CharT('{')) {
                 return make_unexpected(failure{
                     scanner_error,
@@ -435,6 +451,227 @@ struct basic_scanner_impl<CharT, CharT>
         }
         val = ch.value();
         return {};
+    }
+};
+template <typename CharT>
+struct basic_scanner_impl<CharT, span<CharT>>
+    : public detail::scanner_parser_empty<CharT> {
+    template <typename Context>
+    expected<void, failure> scan(span<CharT> val, Context& ctx)
+    {
+        if (val.size() == 0) {
+            return {};
+        }
+
+        auto in_span = [](CharT ch, span<const CharT> s) {
+            return std::find(s.begin(), s.end(), ch) != s.end();
+        };
+        std::vector<CharT> buf(static_cast<size_t>(val.size()));
+        auto it = buf.begin();
+        for (; it != buf.end(); ++it) {
+            auto ch = ctx.stream().read_char();
+            if (!ch) {
+                for (auto i = buf.begin(); i != it - 1; ++i) {
+                    ctx.stream().putback(*i);
+                }
+                return make_unexpected(ch.error());
+            }
+            if (in_span(ch.value(), ctx.locale().space)) {
+                break;
+            }
+            *it = ch.value();
+        }
+        std::copy(buf.begin(), buf.end(), val.begin());
+
+        return {};
+    }
+};
+template <typename CharT>
+struct basic_scanner_impl<CharT, bool>
+    : public detail::scanner_parser_empty<CharT> {
+    template <typename Context>
+    expected<void, failure> scan(bool& val, Context& ctx)
+    {
+        auto tmp = ctx.stream().read_char();
+        if (!tmp) {
+            return make_unexpected(tmp.error());
+        }
+        if (tmp == CharT('0')) {
+            val = false;
+            return {};
+        }
+        if (tmp == CharT('1')) {
+            val = true;
+            return {};
+        }
+        ctx.stream().putback(tmp.value());
+
+        const auto max_len = std::max(ctx.locale().true_str.size(),
+                                      ctx.locale().false_str.size());
+        if (max_len < 1) {
+            return make_unexpected(
+                failure{scanner_error, "Invalid boolean value"});
+        }
+        std::vector<CharT> buf(static_cast<size_t>(max_len));
+        auto it = buf.begin();
+        for (; it != buf.end(); ++it) {
+            auto ch = ctx.stream().read_char();
+            if (!ch) {
+                for (auto i = buf.begin(); i != it - 1; ++i) {
+                    ctx.stream().putback(*i);
+                }
+                return make_unexpected(ch.error());
+            }
+            *it = ch.value();
+
+            if (std::equal(buf.begin(), it + 1,
+                           ctx.locale().false_str.begin())) {
+                val = false;
+                return {};
+            }
+            if (std::equal(buf.begin(), it + 1,
+                           ctx.locale().true_str.begin())) {
+                val = true;
+                return {};
+            }
+        }
+
+        return make_unexpected(failure{scanner_error, "Invalid boolean value"});
+    }
+};
+template <typename CharT, typename T>
+struct basic_scanner_impl<
+    CharT,
+    T,
+    typename std::enable_if<std::is_integral<T>::value &&
+                            !std::is_same<T, CharT>::value &&
+                            !std::is_same<T, bool>::value>::type> {
+    template <typename Context>
+    expected<void, failure> parse(Context& ctx)
+    {
+        ctx.parse_context().advance();
+        const auto ch = *ctx.parse_context().begin();
+        if (ch == CharT('d') || ch == CharT('}')) {
+            base = 10;
+        }
+        else if (ch == CharT('x')) {
+            base = 16;
+        }
+        else if (ch == CharT('o')) {
+            base = 8;
+        }
+        else if (ch == CharT('b')) {
+            base = 2;
+        }
+        else {
+            return make_unexpected(
+                failure{scanner_error,
+                        "Integral types can only be scanned in bases 10 (d), "
+                        "16 (x), 8 (o) and 2 (b)"});
+        }
+        if (ch != CharT('}')) {
+            ctx.parse_context().advance();
+        }
+        return {};
+    }
+
+    template <typename Context>
+    expected<void, failure> scan(T& val, Context& ctx)
+    {
+        std::vector<CharT> buf(static_cast<size_t>(max_digits<T>()) + 1);
+
+        // Copied from span<CharT>
+        auto in_span = [](CharT ch, span<const CharT> s) {
+            return std::find(s.begin(), s.end(), ch) != s.end();
+        };
+        for (auto it = buf.begin(); it != buf.end(); ++it) {
+            auto ch = ctx.stream().read_char();
+            if (!ch) {
+                for (auto i = buf.begin(); i != it - 1; ++i) {
+                    ctx.stream().putback(*i);
+                }
+                return make_unexpected(ch.error());
+            }
+            if (in_span(ch.value(), ctx.locale().space)) {
+                break;
+            }
+            *it = ch.value();
+        }
+
+        T tmp = 0;
+        auto it = buf.begin();
+        auto sign_tmp = [&]() -> expected<bool, failure> {
+            if (std::is_unsigned<T>::value) {
+                if (*it == CharT('-')) {
+                    return make_unexpected(failure{
+                        scanner_error,
+                        "Cannot scan a signed integer into an unsigned value"});
+                }
+            }
+            else {
+                if (*it == CharT('-')) {
+                    return false;
+                }
+            }
+
+            if (*it == CharT('+')) {
+                return true;
+            }
+            if (is_digit(*it, base)) {
+                tmp = tmp * static_cast<T>(base) - char_to_int<T>(*it, base);
+                return true;
+            }
+            return make_unexpected(failure{
+                scanner_error, "Invalid first character in scanned integer"});
+        }();
+        if (!sign_tmp) {
+            return make_unexpected(sign_tmp.error());
+        }
+        const bool sign = sign_tmp.value();
+        ++it;
+
+        for (; it != buf.end(); ++it) {
+            if (is_digit(*it, base)) {
+                tmp = tmp * static_cast<T>(base) - char_to_int<T>(*it, base);
+            }
+            else {
+                break;
+            }
+        }
+
+        if (sign) {
+#if SPIO_MSVC
+#pragma warning(push)
+#pragma warning(disable : 4146)
+#endif
+            tmp = -tmp;
+#if SPIO_MSVC
+#pragma warning(pop)
+#endif
+        }
+
+        val = tmp;
+        return {};
+    }
+
+    int base{10};
+};
+template <typename CharT, typename T>
+struct basic_scanner_impl<
+    CharT,
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type>
+    : public detail::scanner_parser_empty<CharT> {
+    template <typename Context>
+    expected<void, failure> scan(T& val, Context& ctx)
+    {
+        std::array<CharT, 64> buf{};
+        buf.fill(CharT{0});
+
+        bool point = false;
+        for (auto& c : buf) {
+
+        }
     }
 };
 
@@ -462,7 +699,8 @@ auto scan(Stream& s,
 
     auto r = typename ref_type::ref_type(s);
     auto ref = ref_type(r);
-    auto ctx = context_type(ref, f, typename context_type::locale_type());
+    auto ctx =
+        context_type(ref, f, classic_scan_locale<typename Stream::char_type>());
     auto args = make_scan_args<context_type>(a...);
     return get_scanner(ref)(ctx, args_type(args.data()));
 }
@@ -480,7 +718,8 @@ auto scan(Stream& s,
 
     auto r = typename ref_type::ref_type(s);
     auto ref = ref_type(r);
-    auto ctx = context_type(ref, f, typename context_type::locale_type());
+    auto ctx =
+        context_type(ref, f, classic_scan_locale<typename Stream::char_type>());
     auto args = make_scan_args<context_type>(a...);
     return get_scanner(r)(ctx, args_type(args.data()));
 }
@@ -498,7 +737,8 @@ auto scan_at(Stream& s,
 
     auto r = typename ref_type::ref_type(s);
     auto ref = ref_type(r, pos);
-    auto ctx = context_type(ref, f, typename context_type::locale_type());
+    auto ctx =
+        context_type(ref, f, classic_scan_locale<typename Stream::char_type>());
     auto args = make_scan_args<context_type>(a...);
     return get_scanner(r)(ctx, args_type(args.data()));
 }
@@ -515,7 +755,7 @@ auto scan(basic_stream_ref<Char, Tag> s,
     using args_type = basic_scan_args<context_type>;
 
     auto ref = ref_type(s);
-    auto ctx = context_type(ref, f, typename context_type::locale_type{});
+    auto ctx = context_type(ref, f, classic_scan_locale<typename Char::type>());
     auto args = make_scan_args<context_type>(a...);
     return get_scanner(s)(ctx, args_type(args.data()));
 }
@@ -532,7 +772,7 @@ auto scan_at(basic_stream_ref<Char, Tag> s,
     using args_type = basic_scan_args<context_type>;
 
     auto ref = ref_type(s, pos);
-    auto ctx = context_type(ref, f, typename context_type::locale_type{});
+    auto ctx = context_type(ref, f, classic_scan_locale<typename Char::type>());
     auto args = make_scan_args<context_type>(a...);
     return get_scanner(s)(ctx, args_type(args.data()));
 }

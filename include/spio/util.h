@@ -297,6 +297,50 @@ private:
     container_type* m_container;
 };
 
+template <typename Integral>
+SPIO_CONSTEXPR14 int max_digits() noexcept
+{
+    auto i = std::numeric_limits<Integral>::max();
+
+    int digits = 0;
+    while (i) {
+        i /= 10;
+        digits++;
+    }
+
+    return digits + (std::is_signed<Integral>::value ? 1 : 0);
+}
+
+template <typename CharT>
+SPIO_CONSTEXPR14 bool is_digit(CharT c, int base = 10)
+{
+    Expects(base >= 2 && base <= 36);
+    if (base <= 10) {
+        return c >= '0' && c <= '0' + (base - 1);
+    }
+    return is_digit(c, 10) || (c >= 'a' && c <= 'a' + (base - 1)) ||
+           (c >= 'A' && c <= 'A' + (base - 1));
+}
+
+template <typename IntT, typename CharT>
+SPIO_CONSTEXPR14 IntT char_to_int(CharT c, int base)
+{
+    Expects(base >= 2 && base <= 36);
+    Expects(is_digit(c, base));
+    if (base <= 10) {
+        assert(c <= '0' + (base - 1));
+        return static_cast<IntT>(c - '0');
+    }
+    if (c <= '9') {
+        return static_cast<IntT>(c - '0');
+    }
+    if (c >= 'a' && c <= 'z') {
+        return 10 + static_cast<IntT>(c - 'a');
+    }
+    auto ret = 10 + static_cast<IntT>(c - 'A');
+    return ret;
+}
+
 SPIO_END_NAMESPACE
 }  // namespace spio
 

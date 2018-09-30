@@ -36,13 +36,13 @@ struct nullify_input_filter : spio::input_filter {
 
 TEST_CASE("sink_filter")
 {
-    spio::sink_filter_chain<> chain;
-    CHECK(chain.get_dynamic().size() == 0);
-    CHECK(chain.get_dynamic().empty());
+    spio::sink_filter_chain chain;
+    CHECK(chain.size() == 0);
+    CHECK(chain.empty());
 
-    chain.get_dynamic().push<spio::null_output_filter>();
-    CHECK(chain.get_dynamic().size() == 1);
-    CHECK(!chain.get_dynamic().empty());
+    chain.push<spio::null_output_filter>();
+    CHECK(chain.size() == 1);
+    CHECK(!chain.empty());
 
     auto str = "Hello world!";
     auto len = std::strlen(str);
@@ -56,8 +56,8 @@ TEST_CASE("sink_filter")
     CHECK(!r.has_error());
     CHECK_EQ(std::strcmp(str, reinterpret_cast<char*>(buffer.data())), 0);
 
-    chain.get_dynamic().push<nullify_output_filter>();
-    CHECK(chain.get_dynamic().size() == 2);
+    chain.push<nullify_output_filter>();
+    CHECK(chain.size() == 2);
 
     r = chain.write(buffer);
     CHECK(r.value() == len);
@@ -70,13 +70,13 @@ TEST_CASE("sink_filter")
 
 TEST_CASE("source_filter")
 {
-    spio::source_filter_chain<> chain;
-    CHECK(chain.get_dynamic().size() == 0);
-    CHECK(chain.get_dynamic().empty());
+    spio::source_filter_chain chain;
+    CHECK(chain.size() == 0);
+    CHECK(chain.empty());
 
-    chain.get_dynamic().push<spio::null_input_filter>();
-    CHECK(chain.get_dynamic().size() == 1);
-    CHECK(!chain.get_dynamic().empty());
+    chain.push<spio::null_input_filter>();
+    CHECK(chain.size() == 1);
+    CHECK(!chain.empty());
 
     auto str = "Hello world!";
     auto len = std::strlen(str);
@@ -102,8 +102,8 @@ TEST_CASE("source_filter")
     CHECK(buffer.size() == dest.size());
     CHECK_EQ(std::memcmp(buffer.data(), dest.data(), dest.size()), 0);
 
-    chain.get_dynamic().push<nullify_input_filter>();
-    CHECK(chain.get_dynamic().size() == 2);
+    chain.push<nullify_input_filter>();
+    CHECK(chain.size() == 2);
 
     r = chain.read(d);
     CHECK(r.value() == len);

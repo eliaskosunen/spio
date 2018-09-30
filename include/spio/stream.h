@@ -43,9 +43,6 @@ template <typename CharT>
 struct encoding<CharT, ascii_tag> {
     using value_type = CharT;
 
-    template <template <typename...> class Chain>
-    using apply_filters = Chain<>;
-
     static SPIO_CONSTEXPR streampos to_device(streampos pos) noexcept
     {
         return pos.operator streamoff() *
@@ -210,9 +207,7 @@ namespace detail {
 template <typename Encoding, typename Properties>
 class basic_stream_ref;
 
-template <typename Device,
-          typename Encoding,
-          template <typename...> class Chain>
+template <typename Device, typename Encoding, typename Chain>
 class stream : public stream_base,
                public detail::input_stream_base<Device, Encoding>,
                public detail::output_stream_base<Device, Encoding> {
@@ -222,7 +217,7 @@ public:
 
     using encoding_type = Encoding;
     using char_type = typename Encoding::value_type;
-    using chain_type = typename Encoding::template apply_filters<Chain>;
+    using chain_type = Chain;
     using device_type = Device;
     using tied_type = basic_stream_ref<Encoding, flushable_tag>;
 

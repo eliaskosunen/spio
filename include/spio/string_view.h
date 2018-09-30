@@ -144,7 +144,7 @@ public:
 
     SPIO_CONSTEXPR14 void remove_prefix(size_type n)
     {
-        m_data = m_data.subspan(n);
+        m_data = m_data.subspan(static_cast<std::ptrdiff_t>(n));
     }
     SPIO_CONSTEXPR14 void remove_suffix(size_type n)
     {
