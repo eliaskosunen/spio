@@ -669,9 +669,44 @@ struct basic_scanner_impl<
         buf.fill(CharT{0});
 
         bool point = false;
-        for (auto& c : buf) {
-
+        for (auto it = buf.begin(); it != buf.end(); ++it) {
+            auto tmp = ctx.stream().read_char();
+            if (!tmp) {
+                for (auto i = buf.begin(); i != it - 1; ++i) {
+                    ctx.stream().putback(*i);
+                }
+                return make_unexpected(tmp.error());
+            }
+            if (tmp.value() == CharT('.')) {
+                if (point) {
+                    ctx.stream().putback(tmp.value());
+                    break;
+                }
+                point = true;
+                *it = tmp.value();
+                continue;
+            }
+            if (!is_digit(tmp.value())) {
+                ctx.stream().putback(tmp.value());
+                break;
+            }
+            *it = tmp.value();
         }
+
+        if (buf[0] == CharT(0)) {
+            return make_unexpected(
+                failure{scanner_error, "Failed to parse floating-point value"});
+        }
+
+        CharT* end = buf.data();
+        T tmp = str_to_floating<T, CharT>(buf.data(), &end);
+        if (&*std::find(buf.begin(), buf.end(), 0) != end) {
+            return make_unexpected(
+                failure{scanner_error, "Failed to parse floating-point value"});
+        }
+        val = tmp;
+
+        return {};
     }
 };
 

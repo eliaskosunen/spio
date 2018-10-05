@@ -77,3 +77,21 @@ TEST_CASE("scanner int")
     }
     CHECK(val == 420);
 }
+
+TEST_CASE("scanner double")
+{
+    std::string data{"3.14159"};
+    spio::memory_instream in(spio::as_bytes(spio::make_span(
+        data.data(), static_cast<std::ptrdiff_t>(data.size()))));
+    spio::basic_stream_ref<spio::encoding<char>,
+                           spio::random_access_readable_tag>
+        ref(in);
+
+    double val{};
+    auto ret = spio::scan_at(ref, 0, "{}", val);
+    CHECK(ret.operator bool());
+    if (!ret) {
+        puts(ret.error().what());
+    }
+    CHECK(val == doctest::Approx(3.14159));
+}
